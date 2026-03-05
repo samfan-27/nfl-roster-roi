@@ -1,0 +1,60 @@
+name: ETL - roster_roi update
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 2'
+
+jobs:
+  etl:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r requirements.txt
+
+      - name: Sanity import test
+        run: |
+          python - <<'PY'
+          import importlib,sys
+          for p in ("nflreadpy","polars","pandas","supabase","loguru"):
+              importlib.import_module(p)
+          print("imports ok")
+          PY
+
+      - name: Run ETL
+        working-directory: .
+        run: |
+          # If your etl.py accepts args, modify this call. Ensure the script reads env vars for Supabase keys
+          python etl/etl.py --season 2025 --output ./artifacts/roster_roi_2025.csv
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: roster-roi-artifacts
+          path: artifacts/*.csv
