@@ -1,0 +1,13 @@
+numpy
+pandas
+polars
+nflreadpy
+supabase
+streamlit
+plotly
+pytest
+loguru
+nflreadpy
+python-dotenv
+requests
+tqdm

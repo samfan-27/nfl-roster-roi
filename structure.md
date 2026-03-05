@@ -1,0 +1,35 @@
+# Project structure: Roster ROI & EPA Arbitrage
+
+```text
+.
+├── README.md
+├── LICENSE
+├── structure.md
+├── requirements.txt
+├── .gitignore
+├── .github/
+│   └── workflows/
+│       └── update.yml
+├── infra/
+│   └── supabase/
+│       └── ddl.sql
+├── etl/
+│   ├── etl.py
+│   ├── utils.py
+│   ├── config.py              # constants (season default, thresholds)
+│   └── tests/
+│       └── test_etl.py
+├── src/
+│   ├── analysis.py            # optional exploratory transforms / stats functions
+│   └── stats_helpers.py       # shrinkage, bootstrap functions
+├── notebooks/
+│   └── exploratory.ipynb
+├── streamlit_app/
+│   ├── app.py                 # Streamlit app
+│   ├── requirements.txt
+│   └── static/                # README images or assets
+├── docs/
+│   ├── methodology.md         # metric definitions, caveats, decisions
+│   └── data_dictionary.md     # column definitions, sample rules
+└── tests/
+    └── integration_test.py    # simple E2E on synthetic data
