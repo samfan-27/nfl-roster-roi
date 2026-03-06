@@ -3,13 +3,12 @@ name: ETL - roster_roi update
 on:
   workflow_dispatch:
   schedule:
-    # Runs at 03:00 UTC every Tuesday (captures Monday Night Football)
+    # Runs at 03:00 UTC every Tuesday
     - cron: '0 3 * * 2'
 
 jobs:
   etl:
     runs-on: ubuntu-latest
-    # Define secrets once here; they apply to all steps automatically
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -42,7 +41,7 @@ jobs:
       - name: Run ETL
         working-directory: .
         run: |
-          python etl/etl.py --season 2025 --min-snaps 100 --output ./artifacts/roster_roi_2025.csv
+          python -m etl.etl --season 2025 --min-snaps 100 --output ./artifacts/roster_roi_2025.csv
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
