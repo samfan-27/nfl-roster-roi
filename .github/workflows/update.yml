@@ -3,11 +3,13 @@ name: ETL - roster_roi update
 on:
   workflow_dispatch:
   schedule:
+    # Runs at 03:00 UTC every Tuesday (captures Monday Night Football)
     - cron: '0 3 * * 2'
 
 jobs:
   etl:
     runs-on: ubuntu-latest
+    # Define secrets once here; they apply to all steps automatically
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -18,17 +20,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
@@ -38,7 +33,7 @@ jobs:
       - name: Sanity import test
         run: |
           python - <<'PY'
-          import importlib,sys
+          import importlib
           for p in ("nflreadpy","polars","pandas","supabase","loguru"):
               importlib.import_module(p)
           print("imports ok")
@@ -47,11 +42,7 @@ jobs:
       - name: Run ETL
         working-directory: .
         run: |
-          # If your etl.py accepts args, modify this call. Ensure the script reads env vars for Supabase keys
-          python etl/etl.py --season 2025 --output ./artifacts/roster_roi_2025.csv
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          python etl/etl.py --season 2025 --min-snaps 100 --output ./artifacts/roster_roi_2025.csv
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
