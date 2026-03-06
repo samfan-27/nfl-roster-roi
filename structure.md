@@ -22,15 +22,28 @@
 │       └── test_etl.py
 ├── src/
 │   ├── analysis.py
-│   └── stats_helpers.py       # shrinkage functions
+│   └── stats_helpers.py
 ├── notebooks/
 │   └── exploratory.ipynb
 ├── streamlit_app/
-│   ├── app.py                 # Streamlit app
+│   ├── app.py                 # navigation + page router
 │   ├── requirements.txt
+│   ├── .streamlit/
+│   │   └── config.toml
+│   ├── components/
+│   │   ├── __init__.py
+│   │   ├── data_utils.py       # all DB queries + helpers (no UI)
+│   │   └── charts.py           # plotly chart builders
+│   ├── pages/                  # multipage-style modules
+│   │   ├── home.py
+│   │   ├── by_position.py
+│   │   ├── team.py
+│   │   └── player.py
+│   ├── utils/
+│   │   └── fmt.py              # small UI formatting
 │   └── static/
 ├── docs/
-│   ├── methodology.md         # metric definitions, caveats, decisions
-│   └── data_dictionary.md     # column definitions, sample rules
+│   ├── methodology.md
+│   └── data_dictionary.md
 └── tests/
-    └── integration_test.py    # simple E2E on synthetic data
+    └── integration_test.py
