@@ -15,19 +15,20 @@
 │       └── ddl.sql
 ├── etl/
 │   ├── etl.py
+│   ├── database.py
 │   ├── utils.py
-│   ├── config.py              # constants (season default, thresholds)
+│   ├── config.py
 │   └── tests/
 │       └── test_etl.py
 ├── src/
-│   ├── analysis.py            # optional exploratory transforms / stats functions
-│   └── stats_helpers.py       # shrinkage, bootstrap functions
+│   ├── analysis.py
+│   └── stats_helpers.py       # shrinkage functions
 ├── notebooks/
 │   └── exploratory.ipynb
 ├── streamlit_app/
 │   ├── app.py                 # Streamlit app
 │   ├── requirements.txt
-│   └── static/                # README images or assets
+│   └── static/
 ├── docs/
 │   ├── methodology.md         # metric definitions, caveats, decisions
 │   └── data_dictionary.md     # column definitions, sample rules
