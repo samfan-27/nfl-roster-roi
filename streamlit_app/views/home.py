@@ -14,8 +14,8 @@ def render():
         min_snaps = st.slider('Min snaps', 0, 1000, 100, 50)
     with col3:
         cohort = st.radio(
-            "Contract Cohort", 
-            ["All", "Veterans (APY ≥ $4M)", "Rookie Scale (APY < $4M)"],
+            "Contract Tier", 
+            ["All", "Premium Deals (APY ≥ $4M)", "Value Deals (APY < $4M)"],
             horizontal=True
         )
     with col4:
@@ -28,9 +28,9 @@ def render():
         if min_snaps and 'snaps' in df.columns:
             df = df[df['snaps'].fillna(0) >= min_snaps]
             
-        if cohort == "Veterans (APY ≥ $4M)":
+        if cohort == "Premium Deals (APY ≥ $4M)":
             df = df[df['yearly_cap_hit'] >= 4.0]
-        elif cohort == "Rookie Scale (APY < $4M)":
+        elif cohort == "Value Deals (APY < $4M)":
             df = df[df['yearly_cap_hit'] < 4.0]
 
         # Chart

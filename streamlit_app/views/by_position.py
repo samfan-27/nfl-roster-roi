@@ -12,8 +12,8 @@ def render():
         season = st.selectbox('Season', [2025], index=0)
     with col2:
         cohort = st.radio(
-            'Contract Cohort', 
-            ['All', 'Veterans (APY ≥ $4M)', 'Rookie Scale (APY < $4M)'],
+            'Contract Tier', 
+            ['All', 'Premium Deals (APY ≥ $4M)', 'Value Deals (APY < $4M)'],
             horizontal=True
         )
     with col3:
@@ -26,9 +26,9 @@ def render():
         st.warning(f'No data available for {season}.')
         return
 
-    if cohort == 'Veterans (APY ≥ $4M)':
+    if cohort == 'Premium Deals (APY ≥ $4M)':
         df_all = df_all[df_all['yearly_cap_hit'] >= 4.0]
-    elif cohort == 'Rookie Scale (APY < $4M)':
+    elif cohort == 'Value Deals (APY < $4M)':
         df_all = df_all[df_all['yearly_cap_hit'] < 4.0]
 
     tabs = st.tabs(['Quarterbacks', 'Running Backs', 'Wide Receivers', 'Tight Ends'])
