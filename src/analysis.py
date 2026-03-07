@@ -40,6 +40,14 @@ def build_roster_roi(season: int, min_snaps: int = 100) -> Tuple[pd.DataFrame, p
     snap_counts['total_snaps'] = snap_counts['offense_snaps'] + snap_counts['defense_snaps']
     
     season_snaps = snap_counts.groupby('pfr_player_id', as_index=False)['total_snaps'].sum()
+    
+    logger.info('Loading rosters to get years_exp')
+    rosters = to_pandas(nfl.load_rosters([season]))
+    if 'gsis_id' in rosters.columns and 'years_exp' in rosters.columns:
+        rosters_unique = rosters.dropna(subset=['gsis_id']).drop_duplicates(subset=['gsis_id'])
+        roster_exp = rosters_unique[['gsis_id', 'years_exp']]
+    else:
+        roster_exp = pd.DataFrame(columns=['gsis_id', 'years_exp'])
 
     logger.info('players rows: {}, contracts rows: {}, player_stats rows: {}, snap_counts rows: {}', 
                 len(players), len(contracts), len(player_stats), len(snap_counts))
@@ -54,7 +62,7 @@ def build_roster_roi(season: int, min_snaps: int = 100) -> Tuple[pd.DataFrame, p
     contracts['otc_id'] = pd.to_numeric(contracts['otc_id'], errors='coerce').astype('Int64')
     players['otc_id'] = pd.to_numeric(players['otc_id'], errors='coerce').astype('Int64')
 
-    desired_cols = ['otc_id', 'gsis_id', 'pfr_id', 'player_name', 'latest_team', 'position']
+    desired_cols = ['otc_id', 'gsis_id', 'pfr_id', 'player_name', 'latest_team', 'position', 'draft_year', 'entry_year', 'draft_round']
     keep_cols = [c for c in desired_cols if c in players.columns]
     
     merged = pd.merge(contracts, players[keep_cols], on='otc_id', how='left', suffixes=('', '_ply'))
@@ -64,6 +72,9 @@ def build_roster_roi(season: int, min_snaps: int = 100) -> Tuple[pd.DataFrame, p
     
     logger.info('Merging season_snaps on pfr_id (left join)')
     merged = pd.merge(merged, season_snaps, left_on='pfr_id', right_on='pfr_player_id', how='left')
+    
+    logger.info('Merging roster years_exp on gsis_id (left join)')
+    merged = pd.merge(merged, roster_exp, on='gsis_id', how='left')
     
     if 'recent_team' in merged.columns:
         merged['team'] = merged['recent_team'].fillna(merged.get('latest_team'))
@@ -91,6 +102,34 @@ def build_roster_roi(season: int, min_snaps: int = 100) -> Tuple[pd.DataFrame, p
     out['rushing_epa'] = safe_numeric(merged.get('rushing_epa', 0.0))
     out['receiving_epa'] = safe_numeric(merged.get('receiving_epa', 0.0))
     out['snaps'] = pd.to_numeric(merged['total_snaps'], errors='coerce').fillna(0).astype(int)
+    draft_year = pd.to_numeric(merged.get('draft_year'), errors='coerce')
+    draft_round = pd.to_numeric(merged.get('draft_round'), errors='coerce')
+    year_signed = pd.to_numeric(merged.get('year_signed'), errors='coerce')
+    entry_year = pd.to_numeric(merged.get('entry_year'), errors='coerce')
+    years_exp = pd.to_numeric(merged.get('years_exp'), errors='coerce')
+    
+    # UDFAs vs. Drafted
+    is_udfa = draft_round.isna() | (draft_round == 0)
+    
+    # Rule A: Drafted Players (Rounds 1-7)
+    # Active contract must be signed in their draft year.
+    # Any extension (year_signed > draft_year) means they have been repriced by the market.
+    is_drafted_rookie = (~is_udfa) & (year_signed == draft_year)
+    
+    # Rule B: UDFAs
+    # The CBA limits UDFAs to ERFA minimum deals for their first 3 accrued seasons.
+    missing_exp_mask = years_exp.isna()
+    years_since_entry = season - entry_year
+    
+    years_exp_filled = years_exp.fillna(years_since_entry)
+    
+    is_udfa_rookie = is_udfa & (years_exp_filled < 3)
+    
+    out['is_rookie_deal'] = (is_drafted_rookie | is_udfa_rookie).fillna(False).astype(bool)
+    
+    fallback_count = missing_exp_mask.sum()
+    if fallback_count > 0:
+        logger.warning(f"Audit: 'years_exp' missing for {fallback_count} players. Used 'entry_year' fallback to compute UDFA rookie window.")
 
     out = compute_core_metrics(out)
 

@@ -77,7 +77,7 @@ def main():
         'season', 'player_name', 'gsis_id', 'otc_id', 'team', 'position', 'yearly_cap_hit',
         'cap_pct_of_team', 'passing_epa', 'rushing_epa', 'receiving_epa', 'total_epa',
         'snaps', 'epa_per_snap', 'cost_per_epa', 'cost_per_epa_per_100_snaps',
-        'epai_lower', 'epai_upper', 'sample_flag', 'notes', 'updated_at'
+        'epai_lower', 'epai_upper', 'sample_flag', 'notes', 'is_rookie_deal', 'updated_at'
     ]
     for c in final_cols:
         if c not in metrics_df.columns:
