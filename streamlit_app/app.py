@@ -1,5 +1,5 @@
 import streamlit as st
-from pages import home, by_position, team, player
+from views import home, by_position, team, player
 
 PAGES = {
     'Home': home,
