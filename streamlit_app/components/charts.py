@@ -18,7 +18,9 @@ def build_steal_scatter(df: pd.DataFrame, x_col: str = 'yearly_cap_hit', y_col: 
     else:
         x = x_col
         x_label = x_col
-        
+
+    df['cost_per_epa_dollars'] = df['cost_per_epa'].astype(float) * 1_000_000
+
     df['plot_size'] = df['snaps'].fillna(0).astype(int).clip(lower=10)
 
     fig = px.scatter(
@@ -26,9 +28,27 @@ def build_steal_scatter(df: pd.DataFrame, x_col: str = 'yearly_cap_hit', y_col: 
         x=x,
         y=y_col,
         color='position',
-        size='plot_size',
-        hover_data=['player_name', 'team', 'yearly_cap_hit', 'total_epa', 'cost_per_epa', 'snaps', 'sample_flag'],
-        labels={x: x_label, y_col: "Total EPA"}
+        size='plot_size', 
+        hover_data={
+            x: True,
+            y_col: ':.2f',
+            'player_name': True,
+            'team': True,
+            'yearly_cap_hit': True,
+            'cost_per_epa': False,
+            'cost_per_epa_dollars': ':$,.0f',
+            'snaps': True,
+            'sample_flag': True,
+            'plot_size': False
+        },
+        labels={x: x_label, y_col: 'Total EPA', 'cost_per_epa_dollars': 'Cost per EPA'}
+    )
+    
+    fig.update_traces(
+        marker=dict(
+            opacity=0.7,
+            line=dict(width=0.5, color='white')
+        )
     )
 
     # medians for quadrants

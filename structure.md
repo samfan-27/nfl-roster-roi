@@ -34,7 +34,7 @@
 │   │   ├── __init__.py
 │   │   ├── data_utils.py       # all DB queries + helpers (no UI)
 │   │   └── charts.py           # plotly chart builders
-│   ├── pages/                  # multipage-style modules
+│   ├── views/                  # multipage-style modules
 │   │   ├── home.py
 │   │   ├── by_position.py
 │   │   ├── team.py

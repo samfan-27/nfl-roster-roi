@@ -6,7 +6,7 @@ from utils.fmt import dollars_to_str
 def render():
     st.title('Offensive Skill Position ROI — Overview')
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3 = st.columns([1, 2, 1])
     with col1:
         seasons = [2025]  
         season = st.selectbox('Season', seasons, index=0)
@@ -14,19 +14,17 @@ def render():
         min_snaps = st.slider('Min snaps', 0, 1000, 100, 50)
     with col3:
         st.write('')
-        hide_low = st.checkbox('Hide low_sample', value=True)
+        use_log = st.checkbox('Log X-Axis', value=False)
 
     df = load_offense_roster(season)
     
     if not df.empty:
-        if hide_low and 'sample_flag' in df.columns:
-            df = df[df['sample_flag'] != 'low_sample']
         if min_snaps and 'snaps' in df.columns:
             df = df[df['snaps'].fillna(0) >= min_snaps]
 
         # Chart
-        fig = build_steal_scatter(df, x_col='yearly_cap_hit', y_col='total_epa', log_x=False)
-        st.plotly_chart(fig, use_container_width=True)
+        fig = build_steal_scatter(df, x_col="yearly_cap_hit", y_col="total_epa", log_x=use_log)
+        st.plotly_chart(fig, width="stretch")
 
         st.markdown('### Top Steals (Highest EPA per Dollar)')
         steals = df[df['total_epa'] > 0].sort_values('cost_per_epa', ascending=True).head(10)
@@ -35,7 +33,7 @@ def render():
             steals = steals.copy() 
             steals['apy_str'] = steals['yearly_cap_hit'].apply(dollars_to_str)
             display_cols = ['player_name', 'team', 'position', 'apy_str', 'total_epa', 'cost_per_epa', 'snaps']
-            st.dataframe(steals[display_cols], hide_index=True, use_container_width=True)
+            st.dataframe(steals[display_cols], hide_index=True, width="stretch")
         else:
             st.info('No players meet the filter criteria for steals.')
     else:
