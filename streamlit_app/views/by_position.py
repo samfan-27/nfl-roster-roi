@@ -7,24 +7,29 @@ def render():
     st.title('Positional Market Deep Dives')
     st.markdown('Analyze cost vs. production scaled to specific positional markets.')
     
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3, col4 = st.columns([1, 1.5, 2, 1])
     with col1:
         season = st.selectbox('Season', [2025], index=0)
     with col2:
+        min_snaps = st.slider('Min snaps', 0, 1000, 100, 50, key='pos_snaps')
+    with col3:
         cohort = st.radio(
             'Contract Cohort', 
             ['All', 'Veteran / Open Market', 'Rookie Scale Deals'],
             horizontal=True
         )
-    with col3:
-        st.write("")
-        use_log = st.checkbox('Log X-Axis', value=False, key='pos_log')
+    with col4:
+        st.write("") 
+        use_log = st.checkbox('Log X-Axis', value=False, key="pos_log")
         
     df_all = load_offense_roster(season)
     
     if df_all.empty:
         st.warning(f'No data available for {season}.')
         return
+    
+    if min_snaps and 'snaps' in df_all.columns:
+        df_all = df_all[df_all['snaps'].fillna(0) >= min_snaps]
 
     if cohort == 'Veteran / Open Market':
         df_all = df_all[df_all['is_rookie_deal'] == False]
