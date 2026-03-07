@@ -14,12 +14,12 @@ def render():
         min_snaps = st.slider('Min snaps', 0, 1000, 100, 50)
     with col3:
         cohort = st.radio(
-            "Contract Tier", 
-            ["All", "Premium Deals (APY ≥ $4M)", "Value Deals (APY < $4M)"],
+            'Contract Cohort', 
+            ['All', 'Veteran / Open Market', 'Rookie Scale Deals'],
             horizontal=True
         )
     with col4:
-        st.write('')
+        st.write('') 
         use_log = st.checkbox('Log X-Axis', value=False)
 
     df = load_offense_roster(season)
@@ -28,10 +28,10 @@ def render():
         if min_snaps and 'snaps' in df.columns:
             df = df[df['snaps'].fillna(0) >= min_snaps]
             
-        if cohort == "Premium Deals (APY ≥ $4M)":
-            df = df[df['yearly_cap_hit'] >= 4.0]
-        elif cohort == "Value Deals (APY < $4M)":
-            df = df[df['yearly_cap_hit'] < 4.0]
+        if cohort == "Veteran / Open Market":
+            df = df[df['is_rookie_deal'] == False]
+        elif cohort == "Rookie Scale Deals":
+            df = df[df['is_rookie_deal'] == True]
 
         # Chart
         fig = build_steal_scatter(df, x_col="yearly_cap_hit", y_col="total_epa", log_x=use_log)

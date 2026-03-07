@@ -66,6 +66,12 @@ def render():
         # Header
         st.subheader(f"{row['player_name']} | {row['position']} - {row['team']}")
         
+        is_rookie = row.get("is_rookie_deal", False)
+        if is_rookie:
+            st.info('🟢 **Contract Status: Rookie Scale Deal (CBA Constrained)**')
+        else:
+            st.info('🔵 **Contract Status: Veteran / Open Market Deal**')
+        
         # Top level metrics
         m1, m2, m3, m4 = st.columns(4)
         m1.metric('APY (Cost)', dollars_to_str(row['yearly_cap_hit']))
