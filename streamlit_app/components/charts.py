@@ -148,3 +148,44 @@ def build_team_heatmap(df: pd.DataFrame):
         color_continuous_midpoint=0
     )
     return fig
+
+def build_team_scatter(df: pd.DataFrame):
+    """
+    Builds a team-level scatter plot: Total Cap Spent vs Total EPA.
+    """
+    if df.empty:
+        return px.scatter(title='No data available')
+    
+    df = df.copy()
+    df['team_total_cap_m'] = df['team_total_cap_dollars'] / 1_000_000.0
+
+    fig = px.scatter(
+        df,
+        x='team_total_cap_m',
+        y='team_total_epa',
+        text='team',
+        hover_data={
+            'team_total_cap_m': ':$,.1f', 
+            'team_total_epa': ':.1f', 
+            'team': False
+        },
+        labels={
+            'team_total_cap_m': "Total Offensive Skill Cap Spent ($M)", 
+            'team_total_epa': "Total Offensive EPA generated"
+        }
+    )
+    
+    median_x = df['team_total_cap_m'].median()
+    median_y = df['team_total_epa'].median()
+    
+    fig.add_shape(type="line", x0=median_x, x1=median_x, y0=df['team_total_epa'].min(), y1=df['team_total_epa'].max(), line=dict(dash="dash", color="gray", width=1))
+    fig.add_shape(type="line", x0=df['team_total_cap_m'].min(), x1=df['team_total_cap_m'].max(), y0=median_y, y1=median_y, line=dict(dash="dash", color="gray", width=1))
+    
+    fig.add_annotation(x=0.02, y=0.98, xref='paper', yref='paper', text='Moneyball (Cheap & Good)', showarrow=False, font=dict(color='green'))
+    fig.add_annotation(x=0.98, y=0.98, xref='paper', yref='paper', text='Premium (Expensive & Good)', showarrow=False)
+    fig.add_annotation(x=0.02, y=0.02, xref='paper', yref='paper', text='Rebuilding (Cheap & Bad)', showarrow=False)
+    fig.add_annotation(x=0.98, y=0.02, xref='paper', yref='paper', text='Cap Hell (Expensive & Bad)', showarrow=False, font=dict(color='red'))
+
+    fig.update_traces(textposition='top center', marker=dict(size=10, opacity=0.8, color='#1f77b4'))
+    
+    return fig
