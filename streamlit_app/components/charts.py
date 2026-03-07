@@ -72,6 +72,65 @@ def build_steal_scatter(df: pd.DataFrame, x_col: str = 'yearly_cap_hit', y_col: 
     fig.update_layout(legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1))
     return fig
 
+def build_efficiency_scatter(df: pd.DataFrame):
+    """
+    Builds a Volume (Snaps) vs. Efficiency (EPA/Snap) scatter plot.
+    Designed to be used on position-specific filtered data.
+    """
+    if df.empty:
+        return px.scatter(title='No data available for these filters')
+
+    df = df.copy()
+    
+    if 'yearly_cap_hit' in df.columns:
+        df['cap_dollars'] = df['yearly_cap_hit'].astype(float) * 1_000_000
+
+    df['snaps'] = df['snaps'].fillna(0).astype(int)
+    df['epa_per_snap'] = pd.to_numeric(df['epa_per_snap'], errors='coerce').fillna(0)
+
+    fig = px.scatter(
+        df,
+        x='snaps',
+        y='epa_per_snap',
+        color='yearly_cap_hit',
+        color_continuous_scale='Viridis', 
+        hover_data={
+            'snaps': True,
+            'epa_per_snap': ':.3f',
+            'player_name': True,
+            'team': True,
+            'yearly_cap_hit': False,
+            'cap_dollars': ':$,.0f',
+            'total_epa': ':.2f'
+        },
+        labels={
+            'snaps': 'Volume (Total Snaps)', 
+            'epa_per_snap': 'Efficiency (EPA per Snap)',
+            'yearly_cap_hit': 'APY ($M)',
+            'cap_dollars': 'APY'
+        }
+    )
+    
+    median_x = df['snaps'].median()
+    median_y = df['epa_per_snap'].median()
+    
+    fig.add_shape(type="line", x0=median_x, x1=median_x, y0=df['epa_per_snap'].min(), y1=df['epa_per_snap'].max(),
+                  line=dict(dash="dash", color="gray", width=1))
+    fig.add_shape(type="line", x0=df['snaps'].min(), x1=df['snaps'].max(), y0=median_y, y1=median_y,
+                  line=dict(dash='dash', color='gray', width=1))
+
+    fig.add_annotation(x=0.98, y=0.98, xref='paper', yref='paper', 
+                       text='Elite Workhorses', showarrow=False, font=dict(color='green'))
+    fig.add_annotation(x=0.02, y=0.98, xref='paper', yref='paper', 
+                       text='Gadget / High-Efficiency', showarrow=False)
+    fig.add_annotation(x=0.98, y=0.02, xref='paper', yref='paper', 
+                       text='Inefficient Compilers', showarrow=False, font=dict(color='red'))
+
+    fig.update_traces(marker=dict(size=10, opacity=0.8, line=dict(width=0.5, color='white')))
+    fig.update_layout(coloraxis_colorbar=dict(title='APY ($M)'))
+
+    return fig
+
 def build_team_heatmap(df: pd.DataFrame):
     if df.empty:
         return px.treemap(title='No team data available')
