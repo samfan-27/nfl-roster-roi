@@ -9,7 +9,7 @@ def render():
     
     col1, col2, col3, col4 = st.columns([1, 1.5, 2, 1])
     with col1:
-        season = st.selectbox('Season', [2025], index=0)
+        season = st.selectbox('Season', [2025, 2024, 2023], index=0)
     with col2:
         min_snaps = st.slider('Min snaps', 0, 1000, 100, 50, key='pos_snaps')
     with col3:

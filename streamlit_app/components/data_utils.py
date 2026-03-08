@@ -43,3 +43,9 @@ def load_pipeline_meta():
     sup = _get_client()
     res = sup.table('pipeline_meta').select('*').execute()
     return pd.DataFrame(res.data)
+
+@st.cache_data(ttl=300)
+def load_player_history(gsis_id: str):
+    sup = _get_client()
+    res = sup.table('roster_roi').select('*').eq('gsis_id', gsis_id).execute()
+    return pd.DataFrame(res.data)

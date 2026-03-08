@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from components.data_utils import load_offense_roster
+from plotly.subplots import make_subplots
+from components.data_utils import load_offense_roster, load_player_history
 from utils.fmt import dollars_to_str
 
 def build_epa_composition_chart(row):
@@ -33,12 +34,48 @@ def build_epa_composition_chart(row):
     )
     return fig
 
+def build_historical_chart(hist_df):
+    """Builds a dual-axis chart: APY vs EPA over time."""
+    hist_df = hist_df.sort_values('season')
+    
+    fig = make_subplots(specs=[[{'secondary_y': True}]])
+    
+    # Bar Chart for APY (Financial Cost)
+    fig.add_trace(
+        go.Bar(
+            x=hist_df['season'].astype(str), 
+            y=hist_df['yearly_cap_hit'], 
+            name='APY ($M)', 
+            marker_color='rgba(31, 119, 180, 0.4)'
+        ),
+        secondary_y=False,
+    )
+    
+    fig.add_trace(
+        go.Scatter(
+            x=hist_df['season'].astype(str), 
+            y=hist_df['total_epa'], 
+            name='Total EPA', 
+            mode='lines+markers', 
+            line=dict(color='#2ca02c', width=3),
+            marker=dict(size=8)
+        ),
+        secondary_y=True,
+    )
+    
+    fig.update_layout(
+        title_text='Historical Performance vs. Contract Value', 
+        hovermode='x unified', 
+        margin=dict(l=20, r=20, t=40, b=20), 
+        height=350,
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
+    )
+    
+    fig.update_yaxes(title_text="APY ($M)", secondary_y=False)
+    fig.update_yaxes(title_text="Total EPA", secondary_y=True)
+    return fig
+
 def weighted_median(values, weights):
-    """
-    Compute the weighted median of values with corresponding weights.
-    values, weights: pandas Series or 1D array-like
-    Returns float or NaN if no valid data.
-    """
     v = pd.Series(values).astype(float)
     w = pd.Series(weights).astype(float).fillna(0)
     df = pd.concat([v, w], axis=1).dropna()
@@ -56,10 +93,6 @@ def weighted_median(values, weights):
     return float(df.iloc[idx]['v'])
 
 def weighted_percentile(value, values, weights):
-    """
-    Compute weighted percentile of `value` within `values` with `weights`.
-    Returns percentile in [0,100].
-    """
     v = pd.Series(values).astype(float)
     w = pd.Series(weights).astype(float).fillna(0)
     df = pd.concat([v, w], axis=1).dropna()
@@ -78,7 +111,7 @@ def render():
     st.title('Player Dossier')
     st.markdown('Micro-level breakdown of individual player contract efficiency.')
     
-    season = st.selectbox('Season', [2025])
+    season = st.selectbox('Season', [2025, 2024, 2023])
     df = load_offense_roster(season)
     
     if df.empty:
@@ -104,7 +137,6 @@ def render():
         
         st.divider()
         
-        # Header
         st.subheader(f"{row['player_name']} | {row['position']} - {row['team']}")
         
         is_rookie = row.get("is_rookie_deal", False)
@@ -113,7 +145,6 @@ def render():
         else:
             st.info('🔵 **Contract Status: Veteran / Open Market Deal**')
         
-        # Top level metrics
         m1, m2, m3, m4 = st.columns(4)
         m1.metric('APY (Cost)', dollars_to_str(row['yearly_cap_hit']))
         m2.metric('Total EPA', f"{row['total_epa']:.1f}")
@@ -190,5 +221,15 @@ def render():
                 st.info(' **Market Value** (insufficient data for classification)')
         
         st.divider()
-        st.info('Historical time-series tracking will be implemented in Phase 2.')
+        
+        st.markdown('### Historical Time-Series')
+        hist_df = load_player_history(row['gsis_id'])
+        
+        if not hist_df.empty and len(hist_df) > 1:
+            fig_hist = build_historical_chart(hist_df)
+            st.plotly_chart(fig_hist, use_container_width=True)
+        elif not hist_df.empty and len(hist_df) == 1:
+            st.info(' Only one season of data is currently available for this player.')
+        else:
+            st.warning(' Could not load historical data.')
         

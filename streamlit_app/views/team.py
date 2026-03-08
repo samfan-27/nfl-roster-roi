@@ -7,7 +7,7 @@ def render():
     st.title('Team Efficiency')
     st.markdown('Macro-level analysis of positional spending vs. offensive production.')
     
-    season = st.selectbox('Season', [2025])
+    season = st.selectbox('Season', [2025, 2024, 2023])
     df = load_team_efficiency(season)
     
     if df.empty:
