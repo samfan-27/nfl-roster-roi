@@ -33,6 +33,47 @@ def build_epa_composition_chart(row):
     )
     return fig
 
+def weighted_median(values, weights):
+    """
+    Compute the weighted median of values with corresponding weights.
+    values, weights: pandas Series or 1D array-like
+    Returns float or NaN if no valid data.
+    """
+    v = pd.Series(values).astype(float)
+    w = pd.Series(weights).astype(float).fillna(0)
+    df = pd.concat([v, w], axis=1).dropna()
+    df.columns = ['v', 'w']
+    if df.empty:
+        return float('nan')
+    df = df.loc[df['w'] > 0].sort_values('v')
+    if df.empty:
+        return float(pd.Series(values).median())
+    
+    cumw = df['w'].cumsum()
+    cutoff = df['w'].sum() / 2.0
+    idx = cumw.searchsorted(cutoff)
+    idx = int(min(idx, len(df)-1))
+    return float(df.iloc[idx]['v'])
+
+def weighted_percentile(value, values, weights):
+    """
+    Compute weighted percentile of `value` within `values` with `weights`.
+    Returns percentile in [0,100].
+    """
+    v = pd.Series(values).astype(float)
+    w = pd.Series(weights).astype(float).fillna(0)
+    df = pd.concat([v, w], axis=1).dropna()
+    df.columns = ['v', 'w']
+    if df.empty or df['w'].sum() == 0:
+        if df.empty:
+            return float('nan')
+        less_equal = (df['v'] <= float(value)).sum()
+        return float(less_equal) / len(df) * 100.0
+        
+    le_w = df.loc[df['v'] <= float(value), 'w'].sum()
+    pct = float(le_w) / float(df['w'].sum()) * 100.0
+    return pct
+
 def render():
     st.title('Player Dossier')
     st.markdown('Micro-level breakdown of individual player contract efficiency.')
@@ -92,25 +133,62 @@ def render():
         
         with col_chart:
             fig = build_epa_composition_chart(row)
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
             
         with col_context:
             st.markdown('### Positional Context')
-            st.markdown('How this player compares to the rest of the league at their position.')
+            st.markdown('How this player compares to the rest of the league at their position?')
             
+            MIN_SNAPS_FOR_CONTEXT = 200  
             pos_df = df[df['position'] == row['position']]
-            median_epa = pos_df['total_epa'].median()
-            median_cost = pos_df['yearly_cap_hit'].median()
-            
-            st.write(f'**Positional Median EPA:** {median_epa:.1f}')
-            st.write(f'**Positional Median APY:** {dollars_to_str(median_cost)}')
-            
-            if row['total_epa'] > median_epa and row['yearly_cap_hit'] < median_cost:
-                st.success('  Elite Value (Above average production, below average cost)')
-            elif row['total_epa'] < median_epa and row['yearly_cap_hit'] > median_cost:
-                st.error('  Roster Liability (Below average production, above average cost)')
-            else:
-                st.info('  Market Value (Production aligns with cost)')
+            pos_peers = pos_df[pos_df['snaps'].fillna(0) >= MIN_SNAPS_FOR_CONTEXT]
 
+            if pos_peers.empty:
+                pos_peers = pos_df[pos_df['sample_flag'] != 'low_sample']
+            if pos_peers.empty:
+                pos_peers = pos_df  
+            
+            n_peers = len(pos_peers)
+            st.write(f'Peers considered: **{n_peers}** *(min snaps = {MIN_SNAPS_FOR_CONTEXT})*')
+            
+            method = st.radio('Comparison method', ['Unweighted Median', 'Weighted by Snaps'], index=1, horizontal=True)
+            
+            if method == 'Weighted by Snaps':
+                median_epa = weighted_median(pos_peers['total_epa'], pos_peers['snaps'])
+                median_cost = weighted_median(pos_peers['yearly_cap_hit'], pos_peers['snaps'])
+                player_percentile = weighted_percentile(row['total_epa'], pos_peers['total_epa'], pos_peers['snaps'])
+            else:
+                median_epa = float(pos_peers['total_epa'].median()) if n_peers > 0 else float('nan')
+                median_cost = float(pos_peers['yearly_cap_hit'].median()) if n_peers > 0 else float('nan')
+                if n_peers > 0:
+                    less_equal = pos_peers['total_epa'].fillna(0).le(row['total_epa']).sum()
+                    player_percentile = float(less_equal) / float(n_peers) * 100.0
+                else:
+                    player_percentile = float('nan')
+            
+            median_epa_disp = median_epa if pd.notna(median_epa) else 0.0
+            median_cost_disp = median_cost if pd.notna(median_cost) else 0.0
+
+            st.write(f'**Positional Median EPA:** {median_epa_disp:.1f}')
+            st.write(f'**Positional Median APY:** {dollars_to_str(median_cost_disp)}')
+            
+            if pd.notna(player_percentile):
+                st.write(f'**Player Percentile (EPA):** {player_percentile:.1f}%')
+            else:
+                st.write('**Player Percentile:** N/A')
+            
+            st.write("")
+            
+            try:
+                if player_percentile >= 75 and row['yearly_cap_hit'] < median_cost_disp:
+                    st.success(' **Elite Value** (Top quartile production, below median cost)')
+                elif player_percentile <= 25 and row['yearly_cap_hit'] > median_cost_disp:
+                    st.error(' **Roster Liability** (Bottom quartile production, above median cost)')
+                else:
+                    st.info(' **Market Value** (Production aligns with cost)')
+            except Exception:
+                st.info(' **Market Value** (insufficient data for classification)')
+        
+        st.divider()
         st.info('Historical time-series tracking will be implemented in Phase 2.')
         
