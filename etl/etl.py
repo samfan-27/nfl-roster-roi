@@ -18,6 +18,9 @@ Requirements:
 """
 import sys
 import argparse
+import datetime
+
+import pandas as pd
 
 from loguru import logger
 from dotenv import load_dotenv
@@ -34,42 +37,56 @@ load_dotenv()
 
 def parse_args():
     p = argparse.ArgumentParser()
-    p.add_argument('--season', type=int, default=None, help='Season (year), default: nflreadpy.get_current_season()')
-    p.add_argument('--min-snaps', type=int, default=100, help='Minimum snaps to avoid \'low_sample\' flag')
-    p.add_argument('--shrink-tau', type=float, default=200.0, help='Shrinkage prior strength (larger -> more shrinkage)')
-    p.add_argument('--output', type=str, default=None, help='Artifact CSV path')
+    p.add_argument('--seasons', nargs='+', type=int, help='Specific seasons to run (e.g., 2023 2024)')
+    p.add_argument('--auto', action='store_true', help='Auto-run from 2023 to the current season')
+    p.add_argument('--min-snaps', type=int, default=100, help='Minimum snaps to avoid low_sample flag')
+    p.add_argument('--shrink-tau', type=float, default=200.0, help='Shrinkage prior strength')
+    p.add_argument('--output', type=str, default='./artifacts/roster_roi_combined.csv', help='Artifact CSV path')
     p.add_argument('--dry-run', action='store_true', help='Produce artifacts but do not write to Supabase')
     return p.parse_args()
 
 def main():
     args = parse_args()
-    season = args.season or getattr(nfl, 'get_current_season', lambda: None)()
-    if season is None:
-        logger.error('Season not provided and nflreadpy.get_current_season() not available; pass --season')
-        sys.exit(2)
+    
+    current_season = getattr(nfl, 'get_current_season', lambda: datetime.datetime.now().year)()
+    
+    if args.auto:
+        seasons_to_run = list(range(2023, current_season + 1))
+    elif args.seasons:
+        seasons_to_run = args.seasons
+    else:
+        seasons_to_run = [current_season]
 
-    output = args.output or f'./artifacts/roster_roi_{season}.csv'
-    logger.info('ETL start: season={}, min_snaps={}, shrink_tau={}, output={}, dry_run={}',
-                season, args.min_snaps, args.shrink_tau, output, args.dry_run)
+    logger.info('ETL start: seasons={}, min_snaps={}, shrink_tau={}, output={}, dry_run={}',
+                seasons_to_run, args.min_snaps, args.shrink_tau, args.output, args.dry_run)
 
-    try:
-        metrics_df, merged_debug, unmatched = build_roster_roi(season, min_snaps=args.min_snaps)
-    except Exception as e:
-        logger.exception('Failed building roster ROI: {}', e)
-        
+    all_metrics = []
+    merged_debugs = []
+    all_unmatched = []
+
+    for s in seasons_to_run:
         try:
-            sup = get_supabase_client()
-            update_pipeline_meta(sup, status='failed_build', row_count=0, message=str(e))
-        except Exception:
-            logger.warning('Could not update pipeline_meta after build failure (missing creds?)')
-        sys.exit(3)
+            logger.info(f'--- Fetching Data for Season {s} ---')
+            metrics_df, merged_debug, unmatched = build_roster_roi(s, min_snaps=args.min_snaps)
+            all_metrics.append(metrics_df)
+            merged_debugs.append(merged_debug)
+            all_unmatched.append(unmatched)
+        except Exception as e:
+            logger.exception(f'Failed building roster ROI for {s}: {e}')
+            sys.exit(3)
 
+    combined_metrics = pd.concat(all_metrics, ignore_index=True)
+    combined_debug = pd.concat(merged_debugs, ignore_index=True)
+    combined_unmatched = pd.concat(all_unmatched, ignore_index=True).drop_duplicates()
+
+    # Apply shrinkage across all years for highly stable priors
     try:
-        shrunk = shrink_total_epa(metrics_df, tau=args.shrink_tau)
-        metrics_df['total_epa'] = shrunk['total_epa_shrunk']
-        metrics_df['epa_per_snap'] = shrunk['epa_per_snap_shrunk']
-        metrics_df['cost_per_epa'] = shrunk['cost_per_epa_shrunk']
-        metrics_df['cost_per_epa_per_100_snaps'] = shrunk['cost_per_epa_per_100_snaps_shrunk']
+        logger.info('Applying Empirical Bayes Shrinkage across all seasons...')
+        shrunk = shrink_total_epa(combined_metrics, tau=args.shrink_tau)
+        combined_metrics['total_epa'] = shrunk['total_epa_shrunk']
+        combined_metrics['epa_per_snap'] = shrunk['epa_per_snap_shrunk']
+        combined_metrics['cost_per_epa'] = shrunk['cost_per_epa_shrunk']
+        combined_metrics['cost_per_epa_per_100_snaps'] = shrunk['cost_per_epa_per_100_snaps_shrunk']
     except Exception as e:
         logger.warning('Shrinkage step failed: {}. Proceeding without shrinkage.', e)
 
@@ -79,14 +96,16 @@ def main():
         'snaps', 'epa_per_snap', 'cost_per_epa', 'cost_per_epa_per_100_snaps',
         'epai_lower', 'epai_upper', 'sample_flag', 'notes', 'is_rookie_deal', 'updated_at'
     ]
+    
     for c in final_cols:
-        if c not in metrics_df.columns:
-            metrics_df[c] = None
-    metrics_df = metrics_df[final_cols]
+        if c not in combined_metrics.columns:
+            combined_metrics[c] = None
+            
+    combined_metrics = combined_metrics[final_cols]
     
-    metrics_df = metrics_df.drop_duplicates(subset=['season', 'otc_id'], keep='first')
+    combined_metrics = combined_metrics.drop_duplicates(subset=['season', 'otc_id'], keep='first')
     
-    write_artifacts(metrics_df, merged_debug, unmatched, output)
+    write_artifacts(combined_metrics, combined_debug, combined_unmatched, args.output)
 
     rows_written = 0
     if not args.dry_run:

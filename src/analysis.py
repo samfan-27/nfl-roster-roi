@@ -16,12 +16,15 @@ def build_roster_roi(season: int, min_snaps: int = 100) -> Tuple[pd.DataFrame, p
     """
     logger.info('Loading nflreadpy tables for season {}', season)
     players = to_pandas(nfl.load_players())
-    contracts = to_pandas(nfl.load_contracts())
-    contracts = contracts[contracts['is_active'] == True].copy()
-    player_stats = to_pandas(nfl.load_player_stats([season]))
-    player_stats = player_stats.rename(columns={'player_id': 'gsis_id'})
     
-    player_stats = player_stats.rename(columns={'team': 'recent_team'})
+    contracts = to_pandas(nfl.load_contracts())
+    contracts['year_signed'] = pd.to_numeric(contracts['year_signed'], errors='coerce')
+    contracts['otc_id'] = pd.to_numeric(contracts['otc_id'], errors='coerce').astype('Int64')
+    contracts = contracts[contracts['year_signed'] <= season].copy()
+    contracts = contracts.sort_values('year_signed').groupby('otc_id').tail(1)
+    
+    player_stats = to_pandas(nfl.load_player_stats([season]))
+    player_stats = player_stats.rename(columns={'player_id': 'gsis_id', 'team': 'recent_team'})
     
     agg_dict = {
         'passing_epa': 'sum',
@@ -38,33 +41,22 @@ def build_roster_roi(season: int, min_snaps: int = 100) -> Tuple[pd.DataFrame, p
     snap_counts['offense_snaps'] = pd.to_numeric(snap_counts['offense_snaps'], errors='coerce').fillna(0)
     snap_counts['defense_snaps'] = pd.to_numeric(snap_counts['defense_snaps'], errors='coerce').fillna(0)
     snap_counts['total_snaps'] = snap_counts['offense_snaps'] + snap_counts['defense_snaps']
-    
     season_snaps = snap_counts.groupby('pfr_player_id', as_index=False)['total_snaps'].sum()
     
-    logger.info('Loading rosters to get years_exp')
+    logger.info('Loading rosters to get years_exp and active status')
     rosters = to_pandas(nfl.load_rosters([season]))
     if 'gsis_id' in rosters.columns and 'years_exp' in rosters.columns:
         rosters_unique = rosters.dropna(subset=['gsis_id']).drop_duplicates(subset=['gsis_id'])
         roster_exp = rosters_unique[['gsis_id', 'years_exp']]
     else:
         roster_exp = pd.DataFrame(columns=['gsis_id', 'years_exp'])
+        rosters_unique = pd.DataFrame(columns=['gsis_id'])
 
-    logger.info('players rows: {}, contracts rows: {}, player_stats rows: {}, snap_counts rows: {}', 
-                len(players), len(contracts), len(player_stats), len(snap_counts))
-
-    players = players.rename(columns={'display_name': 'player_name'})
-
-    player_stats = player_stats.rename(columns={'player_id': 'gsis_id'})
-    logger.info('Renamed player_stats column player_id -> gsis_id')
-
-    logger.info('Merging contracts with players on otc_id (left join)')
-    
-    contracts['otc_id'] = pd.to_numeric(contracts['otc_id'], errors='coerce').astype('Int64')
     players['otc_id'] = pd.to_numeric(players['otc_id'], errors='coerce').astype('Int64')
-
     desired_cols = ['otc_id', 'gsis_id', 'pfr_id', 'player_name', 'latest_team', 'position', 'draft_year', 'entry_year', 'draft_round']
     keep_cols = [c for c in desired_cols if c in players.columns]
     
+    logger.info('Merging contracts with players on otc_id (left join)')
     merged = pd.merge(contracts, players[keep_cols], on='otc_id', how='left', suffixes=('', '_ply'))
 
     logger.info('Merging merged/contracts with player_stats on gsis_id (left join)')
@@ -75,6 +67,9 @@ def build_roster_roi(season: int, min_snaps: int = 100) -> Tuple[pd.DataFrame, p
     
     logger.info('Merging roster years_exp on gsis_id (left join)')
     merged = pd.merge(merged, roster_exp, on='gsis_id', how='left')
+    
+    is_active_this_season = merged['gsis_id'].isin(rosters_unique['gsis_id']) | (merged['total_snaps'] > 0)
+    merged = merged[is_active_this_season].copy()
     
     if 'recent_team' in merged.columns:
         merged['team'] = merged['recent_team'].fillna(merged.get('latest_team'))
