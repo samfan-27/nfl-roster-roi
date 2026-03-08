@@ -111,7 +111,7 @@ def main():
     if not args.dry_run:
         try:
             sup = get_supabase_client()
-            rows_written = upsert_supabase(sup, metrics_df, table='roster_roi', batch_size=DEFAULT_BATCH)
+            rows_written = upsert_supabase(sup, combined_metrics, table='roster_roi', batch_size=DEFAULT_BATCH)
             update_pipeline_meta(sup, status='success', row_count=rows_written, message='ETL succeeded')
         except Exception as e:
             logger.exception('Upsert to Supabase failed: {}', e)
