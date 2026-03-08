@@ -41,7 +41,7 @@ jobs:
       - name: Run ETL
         working-directory: .
         run: |
-          python -m etl.etl --season 2025 --min-snaps 100 --output ./artifacts/roster_roi_2025.csv
+          python -m etl.etl --auto --min-snaps 100 --output ./artifacts/roster_roi_combined.csv
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
