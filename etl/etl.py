@@ -103,7 +103,7 @@ def main():
             
     combined_metrics = combined_metrics[final_cols]
     
-    combined_metrics = combined_metrics.drop_duplicates(subset=['season', 'otc_id'], keep='first')
+    combined_metrics = combined_metrics.drop_duplicates(subset=['season', 'gsis_id'], keep='first')
     
     write_artifacts(combined_metrics, combined_debug, combined_unmatched, args.output)
 

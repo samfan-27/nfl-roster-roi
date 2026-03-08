@@ -43,14 +43,12 @@ def build_roster_roi(season: int, min_snaps: int = 100) -> Tuple[pd.DataFrame, p
     snap_counts['total_snaps'] = snap_counts['offense_snaps'] + snap_counts['defense_snaps']
     season_snaps = snap_counts.groupby('pfr_player_id', as_index=False)['total_snaps'].sum()
     
-    logger.info('Loading rosters to get years_exp and active status')
+    logger.info('Loading rosters to get years_exp, team, position, and active status')
     rosters = to_pandas(nfl.load_rosters([season]))
-    if 'gsis_id' in rosters.columns and 'years_exp' in rosters.columns:
-        rosters_unique = rosters.dropna(subset=['gsis_id']).drop_duplicates(subset=['gsis_id'])
-        roster_exp = rosters_unique[['gsis_id', 'years_exp']]
-    else:
-        roster_exp = pd.DataFrame(columns=['gsis_id', 'years_exp'])
-        rosters_unique = pd.DataFrame(columns=['gsis_id'])
+    rosters_unique = rosters.dropna(subset=['gsis_id']).drop_duplicates(subset=['gsis_id'])
+    roster_info = rosters_unique[['gsis_id', 'years_exp', 'team', 'position']].rename(
+        columns={'team': 'roster_team', 'position': 'roster_position'}
+    )
 
     players['otc_id'] = pd.to_numeric(players['otc_id'], errors='coerce').astype('Int64')
     desired_cols = ['otc_id', 'gsis_id', 'pfr_id', 'player_name', 'latest_team', 'position', 'draft_year', 'entry_year', 'draft_round']
@@ -65,16 +63,22 @@ def build_roster_roi(season: int, min_snaps: int = 100) -> Tuple[pd.DataFrame, p
     logger.info('Merging season_snaps on pfr_id (left join)')
     merged = pd.merge(merged, season_snaps, left_on='pfr_id', right_on='pfr_player_id', how='left')
     
-    logger.info('Merging roster years_exp on gsis_id (left join)')
-    merged = pd.merge(merged, roster_exp, on='gsis_id', how='left')
+    logger.info('Merging roster info on gsis_id (left join)')
+    merged = pd.merge(merged, roster_info, on='gsis_id', how='left')
     
     is_active_this_season = merged['gsis_id'].isin(rosters_unique['gsis_id']) | (merged['total_snaps'] > 0)
     merged = merged[is_active_this_season].copy()
     
-    if 'recent_team' in merged.columns:
-        merged['team'] = merged['recent_team'].fillna(merged.get('latest_team'))
-    else:
-        merged['team'] = merged.get('latest_team')
+    merged['team'] = merged.get('roster_team').fillna(merged.get('recent_team')).fillna(merged.get('latest_team'))
+
+    base_pos = merged.get('roster_position').fillna(merged.get('position_ply')).fillna(merged.get('position'))
+    
+    generic_buckets = ['OL', 'DB', 'DL', 'LB']
+    
+    granular_fallback = merged.get('position_ply').fillna(merged.get('position'))
+    
+    is_generic = base_pos.isin(generic_buckets)
+    merged['position'] = base_pos.mask(is_generic & granular_fallback.notna(), granular_fallback)
 
     if 'player_name' not in merged.columns:
         merged['player_name'] = None
