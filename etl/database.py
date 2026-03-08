@@ -33,7 +33,7 @@ def upsert_supabase(supabase, df: pd.DataFrame, table: str = 'roster_roi', batch
     
     for i in range(0, total, batch_size):
         batch = records[i : i + batch_size]
-        resp = supabase.table(table).upsert(batch, on_conflict='season,gsis_id').execute()
+        resp = supabase.table(table).upsert(batch, on_conflict='ux_roster_roi_season_gsis').execute()
 
         try:
             code = getattr(resp, 'status_code', None)
