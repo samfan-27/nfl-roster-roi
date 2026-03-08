@@ -1,5 +1,7 @@
 numpy
 pandas
+matplotlib
+scikit-learn
 polars
 nflreadpy
 supabase
