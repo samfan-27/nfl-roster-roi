@@ -15,7 +15,7 @@ def render():
     with col3:
         cohort = st.radio(
             'Contract Cohort', 
-            ['All', 'Veteran / Open Market', 'Rookie Scale Deals'],
+            ['All', 'Veteran / Open Market Contracts', 'Rookie Contracts'],
             horizontal=True
         )
     with col4:
@@ -31,9 +31,9 @@ def render():
     if min_snaps and 'snaps' in df_all.columns:
         df_all = df_all[df_all['snaps'].fillna(0) >= min_snaps]
 
-    if cohort == 'Veteran / Open Market':
+    if cohort == 'Veteran / Open Market Contracts':
         df_all = df_all[df_all['is_rookie_deal'] == False]
-    elif cohort == 'Rookie Scale Deals':
+    elif cohort == 'Rookie Contracts':
         df_all = df_all[df_all['is_rookie_deal'] == True]
 
     tabs = st.tabs(['Quarterbacks', 'Running Backs', 'Wide Receivers', 'Tight Ends'])

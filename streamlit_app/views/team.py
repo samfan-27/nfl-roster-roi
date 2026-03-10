@@ -18,7 +18,7 @@ def render():
     
     with tab1:
         st.subheader('Team Spending Efficiency')
-        st.markdown('Are teams getting what they pay for? (Top-Left is the optimal \'Moneyball\' quadrant).')
+        st.markdown("Are teams getting what they pay for? (Top-Left is the optimal 'Moneyball' quadrant).")
         fig_scatter = build_team_scatter(df)
         st.plotly_chart(fig_scatter, width='stretch')
         
@@ -36,7 +36,7 @@ def render():
     df_display['Total Cap ($M)'] = (df_display['team_total_cap_dollars'] / 1_000_000).apply(dollars_to_str)
     
     df_display['Team Cost per EPA'] = df_display.apply(
-        lambda r: f'${(r['team_total_cap_dollars'] / r['team_total_epa']):,.0f}' if r['team_total_epa'] > 0 else 'N/A', 
+        lambda r: f"${(r['team_total_cap_dollars'] / r['team_total_epa']):,.0f}" if r['team_total_epa'] > 0 else 'N/A', 
         axis=1
     )
     
