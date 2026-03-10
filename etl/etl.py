@@ -38,7 +38,7 @@ load_dotenv()
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument('--seasons', nargs='+', type=int, help='Specific seasons to run (e.g., 2023 2024)')
-    p.add_argument('--auto', action='store_true', help='Auto-run from 2023 to the current season')
+    p.add_argument('--auto', action='store_true', help='Auto-run from 2021 to the current season')
     p.add_argument('--min-snaps', type=int, default=100, help='Minimum snaps to avoid low_sample flag')
     p.add_argument('--shrink-tau', type=float, default=200.0, help='Shrinkage prior strength')
     p.add_argument('--output', type=str, default='./artifacts/roster_roi_combined.csv', help='Artifact CSV path')
