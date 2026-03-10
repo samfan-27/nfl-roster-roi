@@ -51,7 +51,7 @@ def main():
     current_season = getattr(nfl, 'get_current_season', lambda: datetime.datetime.now().year)()
     
     if args.auto:
-        seasons_to_run = list(range(2023, current_season + 1))
+        seasons_to_run = list(range(2021, current_season + 1))
     elif args.seasons:
         seasons_to_run = args.seasons
     else:
