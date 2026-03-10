@@ -164,7 +164,7 @@ def render():
         
         with col_chart:
             fig = build_epa_composition_chart(row)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
             
         with col_context:
             st.markdown('### Positional Context')
@@ -227,7 +227,7 @@ def render():
         
         if not hist_df.empty and len(hist_df) > 1:
             fig_hist = build_historical_chart(hist_df)
-            st.plotly_chart(fig_hist, use_container_width=True)
+            st.plotly_chart(fig_hist, width='stretch')
         elif not hist_df.empty and len(hist_df) == 1:
             st.info(' Only one season of data is currently available for this player.')
         else:
