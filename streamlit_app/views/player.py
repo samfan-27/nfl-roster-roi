@@ -111,7 +111,7 @@ def render():
     st.title('Player Dossier')
     st.markdown('Micro-level breakdown of individual player contract efficiency.')
     
-    season = st.selectbox('Season', [2025, 2024, 2023])
+    season = st.selectbox('Season', [2025, 2024, 2023, 2022, 2021])
     df = load_offense_roster(season)
     
     if df.empty:

@@ -8,7 +8,7 @@ def render():
 
     col1, col2, col3, col4 = st.columns([1, 1.5, 2, 1])
     with col1:
-        seasons = [2025, 2024, 2023]
+        seasons = [2025, 2024, 2023, 2022, 2021]
         season = st.selectbox('Season', seasons, index=0)
     with col2:
         min_snaps = st.slider('Min snaps', 0, 1000, 100, 50)
