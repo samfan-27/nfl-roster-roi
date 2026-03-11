@@ -45,8 +45,17 @@ def build_roster_roi(season: int, min_snaps: int = 100) -> Tuple[pd.DataFrame, p
     
     logger.info('Loading rosters to get years_exp, team, position, and active status')
     rosters = to_pandas(nfl.load_rosters([season]))
+    
+    rosters['birth_date'] = pd.to_datetime(rosters['birth_date'], errors='coerce')
+    cutoff_date = pd.to_datetime(f'{season}-09-01')
+    rosters['age'] = (cutoff_date - rosters['birth_date']).dt.days / 365.25
+    
     rosters_unique = rosters.dropna(subset=['gsis_id']).drop_duplicates(subset=['gsis_id'])
-    roster_info = rosters_unique[['gsis_id', 'years_exp', 'team', 'position']].rename(
+    
+    cols_to_extract = ['gsis_id', 'years_exp', 'team', 'position', 'age']
+    keep_cols = [c for c in cols_to_extract if c in rosters_unique.columns]
+    
+    roster_info = rosters_unique[keep_cols].rename(
         columns={'team': 'roster_team', 'position': 'roster_position'}
     )
 
@@ -95,6 +104,8 @@ def build_roster_roi(season: int, min_snaps: int = 100) -> Tuple[pd.DataFrame, p
     out['position'] = merged.get('position')
     out['gsis_id'] = merged.get('gsis_id')
     out['otc_id'] = merged.get('otc_id')
+    out['age'] = safe_numeric(merged.get('age', 0.0))
+    out['years_exp'] = pd.to_numeric(merged.get('years_exp'), errors='coerce').fillna(0).astype(int)
     out['yearly_cap_hit'] = safe_numeric(merged.get('apy', 0.0))
     out['cap_pct_of_team'] = safe_numeric(merged.get('apy_cap_pct', 0.0))
     out['passing_epa'] = safe_numeric(merged.get('passing_epa', 0.0))
