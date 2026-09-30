@@ -1,3 +1,5 @@
+-- Idempotent setup for a new database. Existing deployments already have
+-- these additional columns and the player-season uniqueness constraint.
 create table if not exists public.roster_roi (
   id uuid primary key default gen_random_uuid(),
   season integer not null,
@@ -6,6 +8,9 @@ create table if not exists public.roster_roi (
   otc_id text,
   team text,
   position text,
+  age numeric,
+  years_exp integer,
+  is_rookie_deal boolean,
   yearly_cap_hit numeric(12,2) not null,
   cap_pct_of_team numeric(6,4),
   passing_epa numeric(10,3),
@@ -23,27 +28,24 @@ create table if not exists public.roster_roi (
   updated_at timestamptz default now()
 );
 
+alter table public.roster_roi add column if not exists age numeric;
+alter table public.roster_roi add column if not exists years_exp integer;
+alter table public.roster_roi add column if not exists is_rookie_deal boolean;
+create unique index if not exists idx_roster_roi_season_gsis
+  on public.roster_roi (season, gsis_id);
 create index if not exists idx_roster_roi_season_position
-on public.roster_roi (season, position);
-
-create index if not exists idx_roster_roi_team
-on public.roster_roi (team);
+  on public.roster_roi (season, position);
+create index if not exists idx_roster_roi_team on public.roster_roi (team);
 
 alter table public.roster_roi enable row level security;
-
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1
-    FROM pg_policies
-    WHERE schemaname = 'public'
-      AND tablename  = 'roster_roi'
-      AND policyname = 'allow_public_select'
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public'
+      AND tablename = 'roster_roi' AND policyname = 'allow_public_select'
   ) THEN
-    CREATE POLICY allow_public_select
-      ON public.roster_roi
-      FOR SELECT
-      USING (true);
+    CREATE POLICY allow_public_select ON public.roster_roi
+      FOR SELECT USING (true);
   END IF;
 END
 $$ LANGUAGE plpgsql;
@@ -55,11 +57,18 @@ create table if not exists public.pipeline_meta (
   last_status text,
   last_message text
 );
+insert into public.pipeline_meta (id, last_row_count, last_status)
+  values (1, 0, 'initialized') on conflict (id) do nothing;
 
-insert into public.pipeline_meta (id, last_run, last_row_count, last_status)
-values (1, now(), 0, 'initialized')
-on conflict (id)
-do update set 
-  last_run = excluded.last_run,
-  last_status = excluded.last_status;
-  
+alter table public.pipeline_meta enable row level security;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public'
+      AND tablename = 'pipeline_meta' AND policyname = 'allow_public_select'
+  ) THEN
+    CREATE POLICY allow_public_select ON public.pipeline_meta
+      FOR SELECT USING (true);
+  END IF;
+END
+$$ LANGUAGE plpgsql;

@@ -1,5 +1,14 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).resolve().parents[1] / '.env')
+
 import streamlit as st
 from views import home, by_position, team, player
+from components.data_utils import load_pipeline_meta
+from components.season_picker import show_pipeline_status
 
 PAGES = {
     'Home': home,
@@ -12,14 +21,19 @@ PAGES = {
 st.set_page_config(page_title='Offensive Skill Position ROI', layout='wide')
 
 st.sidebar.title('Navigation')
+try:
+    show_pipeline_status(load_pipeline_meta())
+except Exception:
+    st.error('Cannot query Supabase. Check project availability and application credentials.')
+    st.stop()
 page = st.sidebar.radio('Go to', list(PAGES.keys()), index=0)
 
 if page == 'About / Methodology':
     st.title('About & Methodology')
     st.markdown('### Executive Summary')
     st.markdown('''
-    This dashboard calculates the **Financial Return on Investment (ROI)** for NFL offensive skill positions (QB, RB, WR, TE). 
-    By merging play-by-play production data with salary cap capmetrics, it identifies market inefficiencies, surplus value, and front-office capital allocation strategies.
+    This dashboard calculates the **Financial Return on Investment (ROI)** for NFL offensive skill positions (QB, RB, WR, TE).
+    It compares recorded production with contract APY to describe position-level cost efficiency. Results are descriptive and sensitive to coverage and contract assumptions.
     ''')
 
     st.divider()
@@ -35,13 +49,14 @@ if page == 'About / Methodology':
 
     st.markdown('### Core Metrics & Mathematical Adjustments')
     st.markdown('''
-    *   **`total_epa`**: The sum of a player's Passing, Rushing, and Receiving Expected Points Added.
-    *   **`yearly_cap_hit` (APY)**: Average Per Year contract value (in millions). APY is strictly used over "current year cap hit" to normalize front-office accounting tricks (like void years and signing bonus prorations) and reflect the true market value of the contract.
-    *   **`cost_per_epa`**: Calculated as `yearly_cap_hit / total_epa`. Represents the dollar cost for a single unit of scoring value. *(Note: Players with zero or negative EPA are excluded from efficiency rankings as they operate as financial liabilities).*
-    *   **Empirical Bayes Shrinkage**: Applied to `epa_per_snap` to regress low-sample, high-variance outliers toward the positional mean. This prevents players with 2 snaps and 1 long touchdown from breaking the efficiency models.
-    *   **CBA Cohort Splitting**: The NFL CBA artificially constrains rookie salaries. Comparing a $900k rookie to a $35M veteran mathematically distorts cost-per-EPA. We programmatically isolate "Rookie Scale Deals" from "Veteran / Open Market Deals" using strict rules:
-        *   *Drafted Players*: Must still be on the contract signed in their `draft_year`.
-        *   *Undrafted Free Agents (UDFAs)*: Must have fewer than 3 accrued seasons (`years_exp < 3`), legally restricting them to Exclusive Rights Free Agent (ERFA) minimums.
+    *   **`total_epa`**: The raw sum of a player's Passing, Rushing, and Receiving Expected Points Added from regular-season games shared by both statistics and snap-count sources.
+    *   **`yearly_cap_hit` (APY)**: Average Per Year contract value (in millions). APY describes average annual contract value; it does not measure the current season cap charge or independently establish market value.
+    *   **`cost_per_epa`**: Calculated as `yearly_cap_hit / total_epa`. Stored in millions of dollars per EPA. Players with nonpositive EPA or unknown/zero APY are excluded from value rankings; that exclusion is not a complete assessment of player value.
+    *   **Position Shrinkage**: The normalized cost-per-100-snaps metric uses a rate shrunk toward the same season and position mean. Raw total EPA, EPA per snap, and cost per EPA remain unadjusted. Shrinkage is a heuristic, not a fitted Bayesian model.
+    *   **Contract Cohorts**: Rookie status is an estimate using draft year, contract signing year, and a bounded rookie window. Roster experience is not CBA accrued seasons; the flag does not determine legal ERFA status.
+    *   **Financial Scope**: APY is in millions of dollars. `cap_pct_of_team` is APY divided by that season's league cap, not an actual team cap charge. Contract selection uses the latest signing year no later than the season; historical timing and same-year transactions are approximate.
+    *   **Team Scope**: Team charts sum player-attributed EPA and APY by current/latest roster team. Passing and receiving EPA overlap; the sum is not net team offensive EPA or actual cap spending.
+    *   **In-Season Scope**: Production is season-to-date. Full annual APY divided by partial-season EPA is not comparable to a completed season. No automatic full-season valuation is inferred.
     ''')
 
     st.divider()
@@ -56,14 +71,11 @@ if page == 'About / Methodology':
 
     st.divider()
 
-    st.markdown('### Phase 2 Roadmap: Expected APY Model')
+    st.markdown('### Completed-Season APY Research')
     st.markdown('''
-    The current `cost_per_epa` metric evaluates historical efficiency but assumes a linear price curve. In reality, elite NFL production scales exponentially due to roster scarcity (11 players on the field). 
-    
-    **Next Steps:**
-    *   Train a Generalized Linear Model (GLM) / Ridge Regression / Non-linear models exclusively on the unconstrained **Veteran** cohort.
-    *   Learn the true open-market price of a unit of EPA (controlling for snaps, position, and age).
-    *   Score all players (including rookies) against this model to calculate absolute **Surplus Value** (`Expected APY - Actual APY`).
+    The analysis notebooks call a shared position-specific Ridge model using completed-season EPA, snaps, EPA per snap, age, and experience. The target is APY as a share of the season's league salary cap.
+
+    Estimated veteran contracts form the training cohort. Nested cross-validation holds out all years of each player together, with tuning inside each training fold. The incomplete season is excluded from annual-volume training and scoring. Historical surplus estimates are research outputs, not predictions of future offers.
     ''')
 
 else:
