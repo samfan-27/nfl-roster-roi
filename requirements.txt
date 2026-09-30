@@ -3,13 +3,13 @@ pandas
 matplotlib
 scikit-learn
 polars
-nflreadpy
+pyarrow
+nflreadpy==0.1.5
 supabase
 streamlit
 plotly
 pytest
 loguru
-nflreadpy
 python-dotenv
 requests
 tqdm
