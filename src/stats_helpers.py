@@ -1,6 +1,6 @@
 import math
 import pandas as pd
-from etl.utils import safe_numeric
+from src.domain import numeric as safe_numeric
 
 def compute_core_metrics(df: pd.DataFrame) -> pd.DataFrame:
     """Given df with numeric columns for passing_epa/rushing_epa/receiving_epa/snaps/yearly_cap_hit,
@@ -22,7 +22,7 @@ def compute_core_metrics(df: pd.DataFrame) -> pd.DataFrame:
 
     def cost_per_epa(row):
         te = row['total_epa']
-        if te is None or math.isclose(te, 0.0) or te <= 0:
+        if row['yearly_cap_hit'] <= 0 or te is None or math.isclose(te, 0.0) or te <= 0:
             return None
         return row['yearly_cap_hit'] / te
 
@@ -31,7 +31,7 @@ def compute_core_metrics(df: pd.DataFrame) -> pd.DataFrame:
     def cost_per_100(row):
         te = row['total_epa']
         snaps = row['snaps']
-        if snaps <= 0 or te is None:
+        if row['yearly_cap_hit'] <= 0 or snaps <= 0 or te is None:
             return None
         te_per_100 = te * (100.0 / snaps)
         if te_per_100 <= 0:
@@ -48,6 +48,13 @@ def shrink_total_epa(df: pd.DataFrame, tau: float = 200.0) -> pd.DataFrame:
     tau: prior strength — essentially 'dummy snaps' at the positional average.
     We shrink the rate, then re-multiply by actual snaps for volume.
     """
+    if tau < 0:
+        raise ValueError('Shrinkage strength must be non-negative')
+    if 'season' in df.columns and df['season'].nunique() > 1:
+        return pd.concat([
+            shrink_total_epa(group, tau=tau)
+            for _, group in df.groupby('season', sort=False)
+        ]).reindex(df.index)
     out = df.copy()
     
     # positional EPA/snap averages
@@ -84,7 +91,7 @@ def shrink_total_epa(df: pd.DataFrame, tau: float = 200.0) -> pd.DataFrame:
 
     def cost_per_epa_shrunk(r):
         te = r['total_epa_shrunk']
-        if te is None or math.isclose(te, 0.0) or te <= 0:
+        if r['yearly_cap_hit'] <= 0 or te is None or math.isclose(te, 0.0) or te <= 0:
             return None
         return r['yearly_cap_hit'] / te
 
@@ -93,7 +100,7 @@ def shrink_total_epa(df: pd.DataFrame, tau: float = 200.0) -> pd.DataFrame:
     def cost_per_100_shrunk(r):
         te = r['total_epa_shrunk']
         snaps = r['snaps']
-        if snaps <= 0 or te is None:
+        if r['yearly_cap_hit'] <= 0 or snaps <= 0 or te is None:
             return None
         te_per_100 = te * (100.0 / snaps)
         if te_per_100 <= 0:
@@ -103,3 +110,14 @@ def shrink_total_epa(df: pd.DataFrame, tau: float = 200.0) -> pd.DataFrame:
     out['cost_per_epa_per_100_snaps_shrunk'] = out.apply(cost_per_100_shrunk, axis=1)
     
     return out
+
+
+def aggregate_team_efficiency(df):
+    """Sum player-attributed production and annual APY, not net team EPA."""
+    frame = df.copy()
+    frame['yearly_cap_hit'] = safe_numeric(frame['yearly_cap_hit'])
+    frame['total_epa'] = safe_numeric(frame['total_epa'])
+    return frame.groupby('team', as_index=False).agg(
+        team_total_epa=('total_epa', 'sum'),
+        team_total_cap_dollars=('yearly_cap_hit', lambda values: values.sum() * 1_000_000),
+    )

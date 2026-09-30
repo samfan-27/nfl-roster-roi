@@ -1,150 +1,112 @@
-import pandas as pd
+"""Pure NFL roster joins and ROI calculations on supplied source tables."""
+
 import datetime
-from loguru import logger
-from typing import Tuple
+import pandas as pd
 
-import nflreadpy as nfl
+from src.domain import SALARY_CAP_MILLIONS, numeric, rookie_contract_mask
+from src.stats_helpers import compute_core_metrics, shrink_total_epa
 
-from etl.utils import to_pandas, safe_numeric
-from src.stats_helpers import compute_core_metrics
 
-def build_roster_roi(season: int, min_snaps: int = 100) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def build_roster_roi(season, *, players, contracts, player_stats, snap_counts,
+                     rosters, min_snaps=100, shrink_tau=200.0):
+    """Return metrics, join audit, and unmatched contracts for one season.
+
+    Use regular-season games present in BOTH EPA and snap sources. A newer
+    roster release is not evidence that production data is equally current.
     """
-    Returns:
-      metrics_df: pandas DataFrame ready to write to CSV/upsert (columns match roster_roi DDL)
-      merged_debug: full merged dataframe for auditing (written to artifacts)
-    """
-    logger.info('Loading nflreadpy tables for season {}', season)
-    players = to_pandas(nfl.load_players())
-    
-    contracts = to_pandas(nfl.load_contracts())
-    contracts['year_signed'] = pd.to_numeric(contracts['year_signed'], errors='coerce')
-    contracts['otc_id'] = pd.to_numeric(contracts['otc_id'], errors='coerce').astype('Int64')
-    contracts = contracts[contracts['year_signed'] <= season].copy()
-    contracts = contracts.sort_values('year_signed').groupby('otc_id').tail(1)
-    
-    player_stats = to_pandas(nfl.load_player_stats([season]))
-    player_stats = player_stats.rename(columns={'player_id': 'gsis_id', 'team': 'recent_team'})
-    
-    agg_dict = {
-        'passing_epa': 'sum',
-        'rushing_epa': 'sum',
-        'receiving_epa': 'sum'
-    }
-    
-    if 'recent_team' in player_stats.columns:
-        agg_dict['recent_team'] = 'last'
-        
-    player_stats = player_stats.groupby('gsis_id', as_index=False).agg(agg_dict)
-    
-    snap_counts = to_pandas(nfl.load_snap_counts([season]))
-    snap_counts['offense_snaps'] = pd.to_numeric(snap_counts['offense_snaps'], errors='coerce').fillna(0)
-    snap_counts['defense_snaps'] = pd.to_numeric(snap_counts['defense_snaps'], errors='coerce').fillna(0)
-    snap_counts['total_snaps'] = snap_counts['offense_snaps'] + snap_counts['defense_snaps']
-    season_snaps = snap_counts.groupby('pfr_player_id', as_index=False)['total_snaps'].sum()
-    
-    logger.info('Loading rosters to get years_exp, team, position, and active status')
-    rosters = to_pandas(nfl.load_rosters([season]))
-    rosters_unique = rosters.dropna(subset=['gsis_id']).drop_duplicates(subset=['gsis_id'])
-    roster_info = rosters_unique[['gsis_id', 'years_exp', 'team', 'position']].rename(
-        columns={'team': 'roster_team', 'position': 'roster_position'}
+    if season not in SALARY_CAP_MILLIONS:
+        raise ValueError(f"Salary cap is not configured for season {season}")
+    stats = player_stats.loc[
+        player_stats["season"].eq(season) & player_stats["season_type"].eq("REG")
+    ].copy()
+    snaps = snap_counts.loc[
+        snap_counts["season"].eq(season) & snap_counts["game_type"].eq("REG")
+    ].copy()
+    stats_games = set(stats["game_id"].dropna())
+    snaps_games = set(snaps["game_id"].dropna())
+    games = stats_games & snaps_games
+    if not games:
+        raise ValueError(f"No common regular-season EPA and snap games for {season}")
+    stats = stats.loc[stats["game_id"].isin(games)].sort_values(["week", "game_id"])
+    snaps = snaps.loc[snaps["game_id"].isin(games)].copy()
+    stats = stats.rename(columns={"player_id": "gsis_id", "team": "recent_team"})
+    season_stats = stats.groupby("gsis_id", as_index=False).agg(
+        passing_epa=("passing_epa", "sum"), rushing_epa=("rushing_epa", "sum"),
+        receiving_epa=("receiving_epa", "sum"), recent_team=("recent_team", "last"),
+        games_played=("game_id", "nunique"), through_week=("week", "max"),
     )
+    snaps["total_snaps"] = numeric(snaps["offense_snaps"]) + numeric(snaps["defense_snaps"])
+    season_snaps = snaps.groupby("pfr_player_id", as_index=False)["total_snaps"].sum()
 
-    players['otc_id'] = pd.to_numeric(players['otc_id'], errors='coerce').astype('Int64')
-    desired_cols = ['otc_id', 'gsis_id', 'pfr_id', 'player_name', 'latest_team', 'position', 'draft_year', 'entry_year', 'draft_round']
-    keep_cols = [c for c in desired_cols if c in players.columns]
-    
-    logger.info('Merging contracts with players on otc_id (left join)')
-    merged = pd.merge(contracts, players[keep_cols], on='otc_id', how='left', suffixes=('', '_ply'))
+    players = players.copy().rename(columns={"display_name": "player_name"})
+    players["otc_id"] = numeric(players["otc_id"], fill=float("nan")).astype("Int64")
+    players = players.dropna(subset=["otc_id"]).drop_duplicates("otc_id")
+    contracts = contracts.copy()
+    contracts["otc_id"] = numeric(contracts["otc_id"], fill=float("nan")).astype("Int64")
+    contracts["year_signed"] = numeric(contracts["year_signed"], fill=float("nan"))
+    contracts = contracts.loc[contracts["year_signed"].between(1, season)].dropna(subset=["otc_id"])
+    # Current active status breaks ties only; it is not historical active status.
+    contracts = contracts.sort_values(["year_signed", "is_active", "apy"], kind="stable")
+    contracts = contracts.drop_duplicates("otc_id", keep="last")
+    player_cols = ["otc_id", "gsis_id", "pfr_id", "player_name", "position", "draft_year", "draft_round"]
+    merged = contracts.merge(players[player_cols], on="otc_id", how="left", suffixes=("", "_ply"), validate="one_to_one")
+    merged["gsis_id"] = merged["gsis_id"].fillna(merged["gsis_id_ply"])
+    unmatched = merged.loc[merged["gsis_id"].isna(), ["player", "otc_id"]].rename(columns={"player": "player_name"})
+    merged = merged.dropna(subset=["gsis_id"]).drop_duplicates("gsis_id", keep="last")
+    merged = merged.merge(season_stats, on="gsis_id", how="left", validate="one_to_one")
+    merged = merged.merge(season_snaps, left_on="pfr_id", right_on="pfr_player_id", how="left", validate="many_to_one")
 
-    logger.info('Merging merged/contracts with player_stats on gsis_id (left join)')
-    merged = pd.merge(merged, player_stats, on='gsis_id', how='left', suffixes=('', '_stat'))
-    
-    logger.info('Merging season_snaps on pfr_id (left join)')
-    merged = pd.merge(merged, season_snaps, left_on='pfr_id', right_on='pfr_player_id', how='left')
-    
-    logger.info('Merging roster info on gsis_id (left join)')
-    merged = pd.merge(merged, roster_info, on='gsis_id', how='left')
-    
-    is_active_this_season = merged['gsis_id'].isin(rosters_unique['gsis_id']) | (merged['total_snaps'] > 0)
-    merged = merged[is_active_this_season].copy()
-    
-    merged['team'] = merged.get('roster_team').fillna(merged.get('recent_team')).fillna(merged.get('latest_team'))
+    roster = rosters.dropna(subset=["gsis_id"]).copy()
+    if "week" in roster:
+        roster = roster.sort_values("week", kind="stable")
+    roster = roster.drop_duplicates("gsis_id", keep="last")
+    roster["age"] = (pd.Timestamp(f"{season}-09-01") - pd.to_datetime(roster["birth_date"], errors="coerce")).dt.days / 365.25
+    if "entry_year" not in roster:
+        roster["entry_year"] = float("nan")
+    merged = merged.merge(
+        roster[["gsis_id", "team", "position", "age", "years_exp", "entry_year"]],
+        on="gsis_id", how="left", suffixes=("", "_roster"), validate="one_to_one",
+    )
+    merged = merged.loc[merged["gsis_id"].isin(roster["gsis_id"]) | merged["total_snaps"].gt(0)].copy()
+    merged["team"] = merged["team_roster"].fillna(merged["recent_team"])
+    pos = merged["position_roster"].fillna(merged["position_ply"]).fillna(merged["position"])
+    fallback = merged["position_ply"].fillna(merged["position"])
+    merged["position"] = pos.mask(pos.isin(["OL", "DB", "DL", "LB"]) & fallback.notna(), fallback)
+    for field in ("draft_year", "draft_round"):
+        merged[field] = merged[field].fillna(merged[field + "_ply"])
 
-    base_pos = merged.get('roster_position').fillna(merged.get('position_ply')).fillna(merged.get('position'))
-    
-    generic_buckets = ['OL', 'DB', 'DL', 'LB']
-    
-    granular_fallback = merged.get('position_ply').fillna(merged.get('position'))
-    
-    is_generic = base_pos.isin(generic_buckets)
-    merged['position'] = base_pos.mask(is_generic & granular_fallback.notna(), granular_fallback)
-
-    if 'player_name' not in merged.columns:
-        merged['player_name'] = None
-        
-    if 'player_name_stat' in merged.columns:
-        merged['player_name'] = merged['player_name'].fillna(merged['player_name_stat'])
-    if 'player' in merged.columns:
-        merged['player_name'] = merged['player'].fillna(merged['player'])
-
-    out = pd.DataFrame()
-    out['player_name'] = merged.get('player_name').fillna('unknown')
-    out['season'] = season
-    out['team'] = merged.get('team')
-    out['position'] = merged.get('position')
-    out['gsis_id'] = merged.get('gsis_id')
-    out['otc_id'] = merged.get('otc_id')
-    out['yearly_cap_hit'] = safe_numeric(merged.get('apy', 0.0))
-    out['cap_pct_of_team'] = safe_numeric(merged.get('apy_cap_pct', 0.0))
-    out['passing_epa'] = safe_numeric(merged.get('passing_epa', 0.0))
-    out['rushing_epa'] = safe_numeric(merged.get('rushing_epa', 0.0))
-    out['receiving_epa'] = safe_numeric(merged.get('receiving_epa', 0.0))
-    out['snaps'] = pd.to_numeric(merged['total_snaps'], errors='coerce').fillna(0).astype(int)
-    draft_year = pd.to_numeric(merged.get('draft_year'), errors='coerce')
-    draft_round = pd.to_numeric(merged.get('draft_round'), errors='coerce')
-    year_signed = pd.to_numeric(merged.get('year_signed'), errors='coerce')
-    entry_year = pd.to_numeric(merged.get('entry_year'), errors='coerce')
-    years_exp = pd.to_numeric(merged.get('years_exp'), errors='coerce')
-    
-    # UDFAs vs. Drafted
-    is_udfa = draft_round.isna() | (draft_round == 0)
-    
-    # Rule A: Drafted Players (Rounds 1-7)
-    # Active contract must be signed in their draft year.
-    # Any extension (year_signed > draft_year) means they have been repriced by the market.
-    is_drafted_rookie = (~is_udfa) & (year_signed == draft_year)
-    
-    # Rule B: UDFAs
-    # The CBA limits UDFAs to ERFA minimum deals for their first 3 accrued seasons.
-    missing_exp_mask = years_exp.isna()
-    years_since_entry = season - entry_year
-    
-    years_exp_filled = years_exp.fillna(years_since_entry)
-    
-    is_udfa_rookie = is_udfa & (years_exp_filled < 3)
-    
-    out['is_rookie_deal'] = (is_drafted_rookie | is_udfa_rookie).fillna(False).astype(bool)
-    
-    fallback_count = missing_exp_mask.sum()
-    if fallback_count > 0:
-        logger.warning(f"Audit: 'years_exp' missing for {fallback_count} players. Used 'entry_year' fallback to compute UDFA rookie window.")
-
+    out = pd.DataFrame(index=merged.index)
+    out["season"] = season
+    out["player_name"] = merged["player_name"].fillna(merged["player"])
+    for column in ("gsis_id", "otc_id", "team", "position", "age", "years_exp"):
+        out[column] = merged[column]
+    out['years_exp'] = numeric(out['years_exp'], fill=float('nan')).astype('Int64')
+    out["yearly_cap_hit"] = numeric(merged["apy"], fill=float("nan"))
+    # Compatibility name: APY/current cap, not actual annual cap charge.
+    out["cap_pct_of_team"] = out["yearly_cap_hit"] / SALARY_CAP_MILLIONS[season]
+    for column in ("passing_epa", "rushing_epa", "receiving_epa"):
+        out[column] = numeric(merged[column])
+    out["snaps"] = numeric(merged["total_snaps"]).astype(int)
+    out["is_rookie_deal"] = rookie_contract_mask(merged, season)
     out = compute_core_metrics(out)
-
-    def sample_flag_fn(r):
-        if r['snaps'] < min_snaps:
-            return 'low_sample'
-        if r['total_epa'] <= 0:
-            return 'liability_or_zero'
-        return 'ok'
-
-    out['sample_flag'] = out.apply(sample_flag_fn, axis=1)
-    out['notes'] = None
-    out['updated_at'] = datetime.datetime.now(datetime.UTC).isoformat()
-
-    unmatched = out[(out['gsis_id'].isna()) & (out['otc_id'].notna())][['player_name', 'otc_id']].copy()
-    unmatched = unmatched.drop_duplicates()
-    logger.info('Unmatched mapping rows (otc->no gsis): {}', len(unmatched))
-
-    return out, merged, unmatched
+    adjusted = shrink_total_epa(out, tau=shrink_tau)
+    # Raw production remains consistent with the EPA composition chart.
+    out["cost_per_epa_per_100_snaps"] = adjusted["cost_per_epa_per_100_snaps_shrunk"]
+    out["sample_flag"] = "ok"
+    out.loc[out["total_epa"].le(0), "sample_flag"] = "liability_or_zero"
+    out.loc[out["snaps"].lt(min_snaps), "sample_flag"] = "low_sample"
+    out.loc[out["yearly_cap_hit"].le(0) | out["yearly_cap_hit"].isna(), "sample_flag"] = "missing_contract"
+    week = int(stats["week"].max())
+    coverage = f"Regular season through week {week}; {len(games)} shared games"
+    excluded = len(stats_games ^ snaps_games)
+    out["notes"] = (
+        f"{coverage}; {excluded} games excluded for source mismatch. "
+        "APY in millions; latest contract signed by season year; historical approximation. "
+        "Raw EPA; normalized cost uses position shrinkage; rookie cohort is a heuristic."
+    )
+    out["updated_at"] = datetime.datetime.now(datetime.UTC).isoformat()
+    out["epai_lower"] = None
+    out["epai_upper"] = None
+    # The deployed schema requires a known non-null APY. Audit omissions.
+    out = out.loc[out["yearly_cap_hit"].notna()].copy()
+    return out.reset_index(drop=True), merged.reset_index(drop=True), unmatched

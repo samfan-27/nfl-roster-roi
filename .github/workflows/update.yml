@@ -2,49 +2,54 @@ name: ETL - roster_roi update
 
 on:
   workflow_dispatch:
+    inputs:
+      backfill:
+        description: Refresh all seasons since 2021
+        type: boolean
+        default: false
   schedule:
-    # Runs at 03:00 UTC every Tuesday
-    - cron: '0 3 * * 2'
+    # Daily after roster and overnight stats updates; away from the busy hour.
+    - cron: '23 16 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: roster-roi-etl
+  cancel-in-progress: false
 
 jobs:
   etl:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-
+      BACKFILL: ${{ inputs.backfill || 'false' }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          cache: 'pip'
-
+          cache: pip
       - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Verify calculation and failure handling
+        run: python -m pytest -q
+      - name: Verify database availability before downloading NFL data
+        run: python -m etl.healthcheck
+      - name: Refresh current season or backfill
         run: |
-          python -m pip install --upgrade pip setuptools wheel
-          python -m pip install -r requirements.txt
-
-      - name: Sanity import test
-        run: |
-          python - <<'PY'
-          import importlib
-          for p in ("nflreadpy","polars","pandas","supabase","loguru"):
-              importlib.import_module(p)
-          print("imports ok")
-          PY
-
-      - name: Run ETL
-        working-directory: .
-        run: |
-          python -m etl.etl --auto --min-snaps 100 --output ./artifacts/roster_roi_combined.csv
-
-      - name: Upload artifacts
+          if [ "$BACKFILL" = "true" ]; then
+            python -m etl.etl --auto --fresh
+          else
+            python -m etl.etl --fresh
+          fi
+      - name: Upload data and join audits
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: roster-roi-artifacts
           path: artifacts/*.csv
+          if-no-files-found: ignore
+          retention-days: 14

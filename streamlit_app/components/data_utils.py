@@ -1,51 +1,67 @@
+"""Cached Supabase reads; calculations remain in the domain package."""
+
 import os
 import pandas as pd
 from supabase import create_client
 import streamlit as st
+from src.domain import OFFENSIVE_POSITIONS
+
 
 @st.cache_resource
 def _get_client():
-    url = st.secrets.get('SUPABASE_URL', os.getenv('SUPABASE_URL'))
-    key = st.secrets.get('SUPABASE_ANON_KEY', os.getenv('SUPABASE_ANON_KEY'))
+    url = os.getenv('SUPABASE_URL')
+    key = os.getenv('SUPABASE_ANON_KEY')
+    try:
+        url = st.secrets.get('SUPABASE_URL', url)
+        key = st.secrets.get('SUPABASE_ANON_KEY', key)
+    except st.errors.StreamlitSecretNotFoundError:
+        pass
     if not url or not key:
         raise RuntimeError('Supabase URL or anon key not found in secrets/environment')
     return create_client(url, key)
 
-@st.cache_data(ttl=300)
-def load_offense_roster(season: int):
-    """
-    Returns a DataFrame filtered to QB, RB, WR, TE for the given season.
-    """
-    sup = _get_client()
-    res = sup.table('roster_roi').select('*').eq('season', season).in_('position', ['QB', 'RB', 'WR', 'TE']).execute()
-    return pd.DataFrame(res.data)
+
+def _read_pages(query, page_size=1000):
+    """Supabase caps responses; fetch every page in a stable query order."""
+    records = []
+    offset = 0
+    while True:
+        page = query.range(offset, offset + page_size - 1).execute().data
+        records.extend(page)
+        if len(page) < page_size:
+            return pd.DataFrame(records)
+        offset += page_size
+
 
 @st.cache_data(ttl=300)
-def load_team_efficiency(season: int):
-    sup = _get_client()
-    res = sup.table('roster_roi').select('team,total_epa,yearly_cap_hit').eq('season', season).in_('position', ['QB', 'RB', 'WR', 'TE']).execute()
-    df = pd.DataFrame(res.data)
-    
-    if df.empty:
-        return df
+def load_available_seasons():
+    query = _get_client().table('roster_roi').select('season').order('season', desc=True).order('gsis_id')
+    frame = _read_pages(query)
+    return sorted(frame['season'].dropna().astype(int).unique().tolist(), reverse=True) if not frame.empty else []
 
-    df['yearly_cap_hit'] = pd.to_numeric(df['yearly_cap_hit'], errors='coerce').fillna(0)
-    df['total_epa'] = pd.to_numeric(df['total_epa'], errors='coerce').fillna(0)
 
-    out = df.groupby('team', as_index=False).agg(
-        team_total_epa=('total_epa', 'sum'),
-        team_total_cap_dollars=('yearly_cap_hit', lambda s: s.sum() * 1_000_000)
-    )
-    return out
+@st.cache_data(ttl=300)
+def load_offense_roster(season):
+    query = _get_client().table('roster_roi').select('*').eq('season', season).in_('position', list(OFFENSIVE_POSITIONS)).order('gsis_id')
+    return _read_pages(query)
+
+
+@st.cache_data(ttl=300)
+def load_team_efficiency(season):
+    frame = load_offense_roster(season)
+    if frame.empty:
+        return frame
+    from src.stats_helpers import aggregate_team_efficiency
+    return aggregate_team_efficiency(frame)
+
 
 @st.cache_data(ttl=60)
 def load_pipeline_meta():
-    sup = _get_client()
-    res = sup.table('pipeline_meta').select('*').execute()
-    return pd.DataFrame(res.data)
+    response = _get_client().table('pipeline_meta').select('*').eq('id', 1).execute()
+    return pd.DataFrame(response.data)
+
 
 @st.cache_data(ttl=300)
-def load_player_history(gsis_id: str):
-    sup = _get_client()
-    res = sup.table('roster_roi').select('*').eq('gsis_id', gsis_id).execute()
-    return pd.DataFrame(res.data)
+def load_player_history(gsis_id):
+    query = _get_client().table('roster_roi').select('*').eq('gsis_id', gsis_id).order('season')
+    return _read_pages(query)

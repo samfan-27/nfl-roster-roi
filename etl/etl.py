@@ -1,130 +1,104 @@
+"""Extract NFL data, calculate season ROI, write artifacts, then upsert.
+
+Examples:
+  python -m etl.etl --fresh --dry-run
+  python -m etl.etl --seasons 2026 --fresh
+  python -m etl.etl --auto --fresh
 """
-etl/etl.py — Production-ready ETL for roster_roi (nflreadpy -> Supabase)
 
-Features:
-- Loads players, contracts, player_stats from nflreadpy
-- Robust otc_id <-> gsis_id mapping, with unmatched audit CSV
-- Computes total_epa, epa_per_snap, cost_per_epa, normalized cost_per_epa_per_100_snaps
-- Conservative shrinkage toward position mean (tunable)
-- Outputs artifact CSV and upserts to Supabase roster_roi table in batches
-- Updates pipeline_meta (id=1) with last_run, last_row_count, last_status
-
-Usage:
-  python etl/etl.py --season 2025 --min-snaps 100 --output ./artifacts/roster_roi_2025.csv
-
-Requirements:
-- Python packages installed from requirements.txt (nflreadpy, polars, pandas, supabase, python-dotenv, loguru)
-- .env (SUPABASE_URL & SUPABASE_SERVICE_ROLE_KEY) or env vars set in CI
-"""
-import sys
 import argparse
-import datetime
-
+from pathlib import Path
 import pandas as pd
-
-from loguru import logger
 from dotenv import load_dotenv
+from loguru import logger
 
-import nflreadpy as nfl
-
-from etl.database import get_supabase_client, upsert_supabase, update_pipeline_meta
+from etl.database import check_connection, get_supabase_client, upsert_supabase, update_pipeline_meta
+from etl.sources import configure_sources, current_season, load_reference_tables, load_season_tables, SourceNotReadyError
 from etl.utils import write_artifacts
-from etl.config import DEFAULT_BATCH
 from src.analysis import build_roster_roi
-from src.stats_helpers import shrink_total_epa
+from src.domain import FIRST_SEASON
 
-load_dotenv()
 
-def parse_args():
-    p = argparse.ArgumentParser()
-    p.add_argument('--seasons', nargs='+', type=int, help='Specific seasons to run (e.g., 2023 2024)')
-    p.add_argument('--auto', action='store_true', help='Auto-run from 2021 to the current season')
-    p.add_argument('--min-snaps', type=int, default=100, help='Minimum snaps to avoid low_sample flag')
-    p.add_argument('--shrink-tau', type=float, default=200.0, help='Shrinkage prior strength')
-    p.add_argument('--output', type=str, default='./artifacts/roster_roi_combined.csv', help='Artifact CSV path')
-    p.add_argument('--dry-run', action='store_true', help='Produce artifacts but do not write to Supabase')
-    return p.parse_args()
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--seasons', nargs='+', type=int, help='Explicit seasons to refresh')
+    mode.add_argument('--auto', action='store_true', help='Backfill from 2021 through the current season')
+    parser.add_argument('--min-snaps', type=int, default=100)
+    parser.add_argument('--shrink-tau', type=float, default=200.0)
+    parser.add_argument('--output', default='./artifacts/roster_roi_combined.csv')
+    parser.add_argument('--dry-run', action='store_true', help='Write local artifacts only')
+    parser.add_argument('--fresh', action='store_true', help='Bypass cached source downloads')
+    args = parser.parse_args(argv)
+    if args.min_snaps < 0 or args.shrink_tau < 0:
+        parser.error('Minimum snaps and shrinkage strength must be non-negative')
+    if args.seasons and any(s < FIRST_SEASON or s > current_season() for s in args.seasons):
+        parser.error(f'Seasons must be between {FIRST_SEASON} and {current_season()}')
+    return args
 
-def main():
-    args = parse_args()
-    
-    current_season = getattr(nfl, 'get_current_season', lambda: datetime.datetime.now().year)()
-    
-    if args.auto:
-        seasons_to_run = list(range(2021, current_season + 1))
-    elif args.seasons:
-        seasons_to_run = args.seasons
-    else:
-        seasons_to_run = [current_season]
 
-    logger.info('ETL start: seasons={}, min_snaps={}, shrink_tau={}, output={}, dry_run={}',
-                seasons_to_run, args.min_snaps, args.shrink_tau, args.output, args.dry_run)
+def merge_local_history(new_metrics, output):
+    """Replace refreshed seasons in the local artifact, retaining other years."""
+    path = Path(output)
+    if not path.exists():
+        return new_metrics
+    old = pd.read_csv(path)
+    old = old.loc[~old['season'].isin(new_metrics['season'].unique())]
+    return pd.concat([old, new_metrics], ignore_index=True).sort_values(['season', 'gsis_id'])
 
-    all_metrics = []
-    merged_debugs = []
-    all_unmatched = []
 
-    for s in seasons_to_run:
-        try:
-            logger.info(f'--- Fetching Data for Season {s} ---')
-            metrics_df, merged_debug, unmatched = build_roster_roi(s, min_snaps=args.min_snaps)
-            all_metrics.append(metrics_df)
-            merged_debugs.append(merged_debug)
-            all_unmatched.append(unmatched)
-        except Exception as e:
-            logger.exception(f'Failed building roster ROI for {s}: {e}')
-            sys.exit(3)
-
-    combined_metrics = pd.concat(all_metrics, ignore_index=True)
-    combined_debug = pd.concat(merged_debugs, ignore_index=True)
-    combined_unmatched = pd.concat(all_unmatched, ignore_index=True).drop_duplicates()
-
-    # Apply shrinkage across all years for highly stable priors
-    try:
-        logger.info('Applying Empirical Bayes Shrinkage across all seasons...')
-        shrunk = shrink_total_epa(combined_metrics, tau=args.shrink_tau)
-        combined_metrics['total_epa'] = shrunk['total_epa_shrunk']
-        combined_metrics['epa_per_snap'] = shrunk['epa_per_snap_shrunk']
-        combined_metrics['cost_per_epa'] = shrunk['cost_per_epa_shrunk']
-        combined_metrics['cost_per_epa_per_100_snaps'] = shrunk['cost_per_epa_per_100_snaps_shrunk']
-    except Exception as e:
-        logger.warning('Shrinkage step failed: {}. Proceeding without shrinkage.', e)
-
-    final_cols = [
-        'season', 'player_name', 'gsis_id', 'otc_id', 'team', 'position', 'yearly_cap_hit',
-        'cap_pct_of_team', 'passing_epa', 'rushing_epa', 'receiving_epa', 'total_epa',
-        'snaps', 'epa_per_snap', 'cost_per_epa', 'cost_per_epa_per_100_snaps',
-        'epai_lower', 'epai_upper', 'sample_flag', 'notes', 'is_rookie_deal', 'updated_at'
-    ]
-    
-    for c in final_cols:
-        if c not in combined_metrics.columns:
-            combined_metrics[c] = None
-            
-    combined_metrics = combined_metrics[final_cols]
-    combined_metrics = combined_metrics.dropna(subset=['gsis_id'])
-    combined_metrics = combined_metrics.drop_duplicates(subset=['season', 'gsis_id'], keep='first')
-    
-    write_artifacts(combined_metrics, combined_debug, combined_unmatched, args.output)
-
-    rows_written = 0
+def main(argv=None):
+    load_dotenv()
+    args = parse_args(argv)
+    latest = current_season()
+    seasons = list(range(FIRST_SEASON, latest + 1)) if args.auto else sorted(set(args.seasons or [latest]))
+    sup = None
     if not args.dry_run:
-        try:
-            sup = get_supabase_client()
-            rows_written = upsert_supabase(sup, combined_metrics, table='roster_roi', batch_size=DEFAULT_BATCH)
-            update_pipeline_meta(sup, status='success', row_count=rows_written, message='ETL succeeded')
-        except Exception as e:
-            logger.exception('Upsert to Supabase failed: {}', e)
+        sup = get_supabase_client()
+        check_connection(sup)
+    try:
+        configure_sources(fresh=args.fresh)
+        references = load_reference_tables()
+        metrics, audits, unmatched, coverage = [], [], [], []
+        for season in seasons:
+            logger.info('Building regular-season ROI for {}', season)
             try:
-                sup = get_supabase_client()
-                update_pipeline_meta(sup, status='failed_upsert', row_count=0, message=str(e))
+                tables = load_season_tables(season)
+            except SourceNotReadyError:
+                if args.auto and season == latest:
+                    logger.warning('Current season is not published yet; backfilling completed seasons only')
+                    continue
+                raise
+            frame, audit, missing = build_roster_roi(
+                season, **references, **tables, min_snaps=args.min_snaps,
+                shrink_tau=args.shrink_tau,
+            )
+            if frame.empty or frame.duplicated(['season', 'gsis_id']).any():
+                raise ValueError(f'Empty or duplicate player-season metrics for {season}')
+            metrics.append(frame)
+            audits.append(audit)
+            missing = missing.assign(season=season)
+            unmatched.append(missing)
+            coverage.append(f'{season}: {frame["notes"].iloc[0].split(". ")[0]}')
+        if not metrics:
+            raise SourceNotReadyError('No season data is ready; previous database rows were retained')
+        combined = pd.concat(metrics, ignore_index=True)
+        history = merge_local_history(combined, args.output)
+        write_artifacts(history, pd.concat(audits, ignore_index=True), pd.concat(unmatched, ignore_index=True), args.output)
+        rows_written = 0
+        if sup is not None:
+            rows_written = upsert_supabase(sup, combined)
+            update_pipeline_meta(sup, 'success', rows_written, '; '.join(coverage))
+        logger.success('ETL completed: produced={}, written={}; {}', len(combined), rows_written, '; '.join(coverage))
+        return combined
+    except Exception as exc:
+        if sup is not None:
+            try:
+                update_pipeline_meta(sup, 'failed', message=f'{type(exc).__name__}: {exc}')
             except Exception:
-                logger.warning('Could not update pipeline_meta after upsert failure')
-            sys.exit(4)
-    else:
-        logger.info('Dry-run: not writing to Supabase (rows produced: {})', len(metrics_df))
+                logger.warning('Could not record pipeline failure in Supabase')
+        raise
 
-    logger.success('ETL finished. rows_written={}', rows_written)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
