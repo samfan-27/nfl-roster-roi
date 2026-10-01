@@ -30,6 +30,7 @@ sql('create role anon;create role authenticated;create role service_role bypassr
 sql('grant usage on schema public to public;')
 sql(Path('infra/supabase/ddl.sql').read_text())
 sql(Path('infra/supabase/migrations/20261001_cloud_pipeline.sql').read_text())
+sql(Path('infra/supabase/migrations/20261001_snapshot_regression.sql').read_text())
 owner,other=str(uuid.uuid4()),str(uuid.uuid4())
 assert sql(f"select acquire_pipeline_lock('{owner}')")=='t'
 assert sql(f"select acquire_pipeline_lock('{other}')")=='f'
@@ -82,6 +83,14 @@ assert sql('select count(*) from analysis_publications')=='2'
 w4=run('weekly')
 sql(publish(w4,0,'invalid'),ok=False)
 assert sql('select run_id from analysis_heads')==w2
+# The trigger protects canonical history even without an ingestion head.
+h1,h2=str(uuid.uuid4()),str(uuid.uuid4())
+for key in (h1,h2):
+    sql(f"insert into pipeline_runs(id,kind,season,status,code_revision) values('{key}','bootstrap',2025,'running','test')")
+hcov=json.dumps(dict(shared_games=['h1','h2'],cutoff_week=18,complete_season=True))
+sql(f"insert into season_snapshots values('{h1}',2025,true,'{hcov}','{{}}')")
+hlost=json.dumps(dict(shared_games=['h1'],cutoff_week=18,complete_season=True))
+sql(f"insert into season_snapshots values('{h2}',2025,true,'{hlost}','{{}}')",ok=False)
 # Public client can read only completed publications; no source/private table/RPC.
 assert sql('set role anon;select count(*) from analysis_publications')=='SET\n2'
 sql('set role anon;select * from pipeline_runs',ok=False)

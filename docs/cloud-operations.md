@@ -69,8 +69,9 @@ Unpublished model results, audits, manifests and backups remain private.
 
 1. Save a local backup. Review and apply
    `infra/supabase/migrations/20261001_cloud_pipeline.sql` as database owner in
-   Supabase SQL Editor. This is a one-time additive transaction, not the bootstrap
-   DDL. It never drops the existing tables. Do not rerun after successful commit.
+   Supabase SQL Editor, followed by `20261001_snapshot_regression.sql`. These
+   are one-time additive transactions, not the bootstrap
+   DDL. They never drop the existing tables. Do not rerun after successful commit.
 2. Verify the new private bucket, service-role RPCs and anonymous boundaries.
 3. Initialize completed-season snapshots and run `python -m etl.backup` once.
 4. Run a clean-container weekly job and verify the publication, private manifest

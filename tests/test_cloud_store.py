@@ -104,3 +104,13 @@ def test_staged_batches_are_fenced_and_do_not_commit_after_failure():
     assert all(c.args[0]=='stage_pipeline_metrics' for c in client.rpc.call_args_list)
     assert client.rpc.call_args_list[0].args[1]['p_reset'] is True
     assert client.rpc.call_args_list[1].args[1]['p_reset'] is False
+
+
+def test_regression_baseline_includes_canonical_history_and_dashboard():
+    client=MagicMock();store=CloudStore(client)
+    queries={name:MagicMock() for name in ('ingestion_heads','history_heads')}
+    client.table.side_effect=lambda name:queries[name]
+    for name,run_id in [('ingestion_heads','daily'),('history_heads','history')]:
+        queries[name].select.return_value.eq.return_value.execute.return_value.data=[{'run_id':run_id}]
+    store.snapshot=lambda key:dict(coverage=dict(shared_games=['g1'] if key=='daily' else ['g1','g2']))
+    assert store.previous_games(2025)==['g1','g2']

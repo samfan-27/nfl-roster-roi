@@ -124,8 +124,12 @@ class CloudStore:
         return rows[0]
 
     def previous_games(self, season):
-        rows = self.client.table('ingestion_heads').select('run_id').eq('season', season).execute().data
-        return self.snapshot(rows[0]['run_id'])['coverage']['shared_games'] if rows else []
+        games = set()
+        for table in ('ingestion_heads', 'history_heads'):
+            rows = self.client.table(table).select('run_id').eq('season', season).execute().data
+            if rows:
+                games.update(self.snapshot(rows[0]['run_id'])['coverage']['shared_games'])
+        return sorted(games)
 
     def histories(self, current):
         heads = read_pages(self.client.table('history_heads').select('*').lt('season', current).order('season'))
