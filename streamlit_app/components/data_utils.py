@@ -65,3 +65,27 @@ def load_pipeline_meta():
 def load_player_history(gsis_id):
     query = _get_client().table('roster_roi').select('*').eq('gsis_id', gsis_id).order('season')
     return _read_pages(query)
+
+
+@st.cache_data(ttl=60)
+def load_analysis_status():
+    return _read_pages(_get_client().table('analysis_status').select('*').order('season', desc=True))
+
+
+@st.cache_data(ttl=60)
+def load_report_versions():
+    columns = 'run_id,season,week,published_at,coverage'
+    return _read_pages(_get_client().table('analysis_publications').select(columns)
+                       .order('season', desc=True).order('week', desc=True)
+                       .order('published_at', desc=True).order('run_id'))
+
+
+@st.cache_data(ttl=60)
+def load_report_heads():
+    return _read_pages(_get_client().table('analysis_heads').select('*').order('season', desc=True))
+
+
+@st.cache_data(ttl=300)
+def load_published_report(run_id):
+    rows = _get_client().table('analysis_publications').select('*').eq('run_id', run_id).execute().data
+    return rows[0] if rows else None

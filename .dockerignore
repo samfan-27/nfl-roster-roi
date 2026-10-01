@@ -1,0 +1,11 @@
+*
+!Dockerfile
+!requirements.txt
+!src/
+!src/**
+!etl/
+!etl/**
+!infra/
+!infra/coverage/
+!infra/coverage/**
+**/__pycache__

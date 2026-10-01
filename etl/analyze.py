@@ -1,73 +1,49 @@
-"""Refresh research artifacts and compare the latest season at matched weeks."""
-
+"""Generate shared research locally, or publish via validated cloud inputs."""
 import argparse
 from pathlib import Path
-import re
 import pandas as pd
 from dotenv import load_dotenv
-from etl.sources import configure_sources, current_season, load_reference_tables, load_season_tables
+from etl.sources import configure_sources,current_season,load_reference_tables,load_season_tables,load_schedule
+from etl.coverage import assess_coverage,require_ready,through_week
 from src.analysis import build_roster_roi
-from src.reporting import position_summary, matched_position_comparison, top_value_players
-from src.valuation import score_completed_seasons
+from src.reporting import analysis_outputs
 
 
-def table_text(frame):
-    return '```text\n' + frame.to_string(index=False, float_format=lambda x: f'{x:,.3f}') + '\n```\n'
-
-
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--input', default='artifacts/roster_roi_combined.csv')
-    parser.add_argument('--output', default='artifacts/latest_analysis.md')
-    args = parser.parse_args()
+def main(argv=None):
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--cloud',action='store_true')
+    parser.add_argument('--input',default='artifacts/roster_roi_combined.csv')
+    parser.add_argument('--output',default='artifacts/latest_analysis.md')
+    args=parser.parse_args(argv)
     load_dotenv()
-    frame = pd.read_csv(args.input)
-    latest = int(frame['season'].max())
-    now = frame.loc[frame['season'] == latest]
-    match = re.search(r'through week (\d+)', str(now['notes'].iloc[0]))
-    if not match:
-        raise ValueError('Input lacks production coverage metadata; rerun ETL first')
-    week = int(match.group(1))
-    configure_sources()
-    references = load_reference_tables()
-    previous_tables = load_season_tables(latest - 1)
-    for name in ['player_stats', 'snap_counts']:
-        previous_tables[name] = previous_tables[name].loc[previous_tables[name]['week'] <= week]
-    before, _, _ = build_roster_roi(latest - 1, **references, **previous_tables)
-    scored, diagnostics = score_completed_seasons(frame, incomplete_season=current_season())
-    scored.to_csv('artifacts/roster_roi_scored.csv', index=False)
-    diagnostics.to_csv('artifacts/model_diagnostics.csv', index=False)
-    comparison = matched_position_comparison(now, before)
-    comparison.to_csv('artifacts/matched_week_comparison.csv', index=False)
-    text = f'''# NFL roster ROI analysis: {latest}, regular season through week {week}
-
-Generated at {pd.Timestamp.now(tz='UTC').isoformat()}.
-
-{now['notes'].iloc[0]}
-
-## Interpretation
-
-- Production is season-to-date, not a completed season or forecast.
-- Annual APY divided by partial-season EPA rises mechanically when fewer games are recorded. Compare within the same season and position.
-- All financial values are millions of dollars unless explicitly labeled as dollars. APY is not the season's actual cap charge.
-- Team and position totals sum player-attributed EPA; passing and receiving EPA overlap and must not be interpreted as net offensive team EPA.
-- Contract selection is a historical approximation using signing year. Same-year transactions and extension effective dates are not fully resolved.
-- Rookie labels are estimates, not CBA legal classifications.
-
-## Current position totals
-
-'''
-    text += table_text(position_summary(now).reset_index())
-    text += f'\n## Matched coverage: {latest} versus {latest - 1}, through week {week}\n\n'
-    text += table_text(comparison)
-    text += '\n## Positive-EPA value candidates: minimum 100 snaps\n\nThese are descriptive rankings, not definitive contract valuations.\n\n'
-    text += table_text(top_value_players(now))
-    text += '\n## Completed-season APY research model\n\nThe incomplete season is excluded from both model training and annual-volume scoring. Validation uses nested cross-validation grouped by player. These metrics are out-of-fold; historical contract approximation still limits interpretation.\n\n'
-    text += table_text(diagnostics)
-    text += '\n## Artifacts\n\n- `roster_roi_scored.csv`: completed-season expected APY and surplus estimates.\n- `model_diagnostics.csv`: nested grouped validation.\n- `matched_week_comparison.csv`: prior/current production at matched week coverage.\n'
-    Path(args.output).write_text(text)
-    print(f'Wrote {args.output}; scored {len(scored)} completed player-seasons')
+    if args.cloud:
+        from etl.cloud import main as cloud_main
+        return cloud_main(['weekly'])
+    frame=pd.read_csv(args.input)
+    latest=current_season()
+    configure_sources(fresh=True)
+    references=load_reference_tables()
+    now_tables=load_season_tables(latest)
+    coverage=assess_coverage(latest,load_schedule(latest),now_tables)
+    require_ready(coverage)
+    week=coverage['cutoff_week']
+    before_tables=load_season_tables(latest-1)
+    before_coverage=assess_coverage(latest-1,load_schedule(latest-1),before_tables,grace_hours=0)
+    require_ready(before_coverage,historical=True)
+    now,_,_=build_roster_roi(latest,**references,**through_week(now_tables,week))
+    before,_,_=build_roster_roi(latest-1,**references,**through_week(before_tables,week))
+    # Local CSV mode remains an explicit research convenience. Canonical cloud
+    # execution never treats arbitrary retained dashboard rows as training data.
+    report,outputs=analysis_outputs(frame.loc[frame.season.lt(latest)],now,before,latest,week)
+    output=Path(args.output)
+    output.parent.mkdir(parents=True,exist_ok=True)
+    output.write_text(report)
+    filenames=dict(scored='roster_roi_scored.csv',diagnostics='model_diagnostics.csv',comparison='matched_week_comparison.csv',summary='position_summary.csv',candidates='value_candidates.csv')
+    for name,data in outputs.items():
+        data.to_csv(output.parent/filenames[name],index=False)
+    print(f'Wrote {output}')
+    return 0
 
 
-if __name__ == '__main__':
-    main()
+if __name__=='__main__':
+    raise SystemExit(main())
