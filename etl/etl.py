@@ -7,6 +7,7 @@ Examples:
 """
 
 import argparse
+import os
 from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
@@ -50,6 +51,18 @@ def merge_local_history(new_metrics, output):
 def main(argv=None):
     load_dotenv()
     args = parse_args(argv)
+    if os.getenv('CLOUD_PIPELINE_ENABLED', '').lower() == 'true' and not args.dry_run:
+        from etl.cloud import main as cloud_main
+        latest = current_season()
+        seasons = list(range(FIRST_SEASON, latest + 1)) if args.auto else sorted(set(args.seasons or [latest]))
+        for season in seasons:
+            kind = 'refresh'
+            code = cloud_main([kind, '--season', str(season), '--min-snaps', str(args.min_snaps),
+                               '--shrink-tau', str(args.shrink_tau)])
+            if code:
+                raise RuntimeError(f'Cloud {kind} did not complete (exit {code})')
+        return
+
     latest = current_season()
     seasons = list(range(FIRST_SEASON, latest + 1)) if args.auto else sorted(set(args.seasons or [latest]))
     sup = None

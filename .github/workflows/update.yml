@@ -3,6 +3,11 @@ name: ETL - roster_roi update
 on:
   workflow_dispatch:
     inputs:
+      operation:
+        description: Daily refresh or explicit weekly cloud verification
+        type: choice
+        options: [refresh, weekly]
+        default: refresh
       backfill:
         description: Refresh all seasons since 2021
         type: boolean
@@ -26,6 +31,8 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       BACKFILL: ${{ inputs.backfill || 'false' }}
+      OPERATION: ${{ inputs.operation || 'refresh' }}
+      CLOUD_PIPELINE_ENABLED: ${{ vars.CLOUD_PIPELINE_ENABLED || 'false' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -40,7 +47,9 @@ jobs:
         run: python -m etl.healthcheck
       - name: Refresh current season or backfill
         run: |
-          if [ "$BACKFILL" = "true" ]; then
+          if [ "$OPERATION" = "weekly" ]; then
+            python -m etl.cloud weekly
+          elif [ "$BACKFILL" = "true" ]; then
             python -m etl.etl --auto --fresh
           else
             python -m etl.etl --fresh

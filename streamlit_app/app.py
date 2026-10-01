@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
 
 import streamlit as st
-from views import home, by_position, team, player
+from views import home, by_position, team, player, reports
 from components.data_utils import load_pipeline_meta
 from components.season_picker import show_pipeline_status
 
@@ -15,6 +15,7 @@ PAGES = {
     'By Position': by_position,
     'Team Efficiency': team,
     'Player Detail': player,
+    'Weekly Reports': reports,
     'About / Methodology': None,
 }
 

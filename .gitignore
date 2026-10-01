@@ -211,3 +211,7 @@ __marimo__/
 artifacts/
 
 .streamlit/
+
+# Local handoff and project status notes
+/HANDOFF.md
+/PROJECT_STATUS.md
