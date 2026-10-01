@@ -1,0 +1,31 @@
+name: Weekly cloud analysis
+on:
+  workflow_dispatch:
+  schedule:
+    # Thursday 12:37 ET in both DST states (one extra idempotent attempt).
+    - cron: '37 16,17 * * 4'
+    # One bounded next-day retry if source publication was delayed.
+    - cron: '37 17 * * 5'
+permissions:
+  contents: read
+concurrency:
+  group: roster-roi-weekly
+  cancel-in-progress: false
+jobs:
+  weekly:
+    # Enable only after migration, history initialization and a successful manual run.
+    if: github.event_name == 'workflow_dispatch' || vars.CLOUD_PIPELINE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      CODE_REVISION: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - run: python -m etl.cloud weekly

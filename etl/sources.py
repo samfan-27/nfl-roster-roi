@@ -51,3 +51,7 @@ def load_season_tables(season):
 
 def current_season():
     return nfl.get_current_season()
+
+
+def load_schedule(season):
+    return _load(nfl.load_schedules, season)

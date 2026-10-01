@@ -44,3 +44,21 @@ def test_all_dashboard_pages_select_latest_loaded_season(monkeypatch):
         assert not app.exception, (name, app.exception)
         if name != 'About / Methodology':
             assert app.selectbox[0].value == 2026
+
+
+def test_reports_preserve_latest_and_allow_prior_versions_after_failed_attempt(monkeypatch):
+    from views import reports
+    coverage=dict(shared_games=['g1'],grace_hours=48,grace_games=[],per_week=[dict(week=1,scheduled=1,completed=1,shared=1)])
+    versions=pd.DataFrame([dict(run_id='new-version',season=2026,week=1,published_at='2026-09-30',coverage=coverage),
+                           dict(run_id='old-version',season=2026,week=1,published_at='2026-09-29',coverage=coverage)])
+    monkeypatch.setattr(reports,'load_report_versions',lambda:versions)
+    monkeypatch.setattr(reports,'load_analysis_status',lambda:pd.DataFrame([dict(season=2026,status='failed',updated_at='today')]))
+    monkeypatch.setattr(reports,'load_report_heads',lambda:pd.DataFrame([dict(season=2026,run_id='new-version')]))
+    monkeypatch.setattr(reports,'load_published_report',lambda key:dict(run_id=key,coverage=coverage,week=1,report_markdown=f'# Published {key}',comparison=[dict(position='QB',epa_per_snap_current=.1)]))
+    app=AppTest.from_string('from views.reports import render\nrender()').run()
+    assert not app.exception
+    assert app.selectbox[1].value=='new-version'
+    app.selectbox[1].set_value('old-version').run()
+    assert not app.exception
+    assert 'old-version' in app.markdown[-1].value
+    assert 'previous successful report' in app.info[0].value
