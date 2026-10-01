@@ -12,7 +12,7 @@ import time
 
 container=sys.argv[1] if len(sys.argv)>1 else 'nfl-roi-migration-test'
 def sql(statement,ok=True):
-    result=subprocess.run(['docker','exec','-i',container,'psql','-U','postgres','-v','ON_ERROR_STOP=1','-At'],
+    result=subprocess.run(['docker','exec','-i',container,'psql','-h','127.0.0.1','-U','postgres','-v','ON_ERROR_STOP=1','-At'],
                           input=statement,text=True,capture_output=True)
     if ok and result.returncode:
         raise RuntimeError(result.stderr)
@@ -20,8 +20,10 @@ def sql(statement,ok=True):
         raise AssertionError('Expected database rejection')
     return result.stdout.strip()
 
+# The entrypoint temporarily starts a Unix-socket-only server during initdb.
+# Wait on TCP so that only the final server can satisfy readiness.
 for attempt in range(40):
-    ready=subprocess.run(['docker','exec',container,'pg_isready','-U','postgres'],capture_output=True)
+    ready=subprocess.run(['docker','exec',container,'pg_isready','-h','127.0.0.1','-U','postgres'],capture_output=True)
     if ready.returncode==0:break
     time.sleep(.5)
 else:raise RuntimeError('Test database did not start')
