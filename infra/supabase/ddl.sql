@@ -72,3 +72,45 @@ BEGIN
   END IF;
 END
 $$ LANGUAGE plpgsql;
+
+-- Explicit financial definitions and offensive exposure; apply before refreshing.
+-- This migration does not synthesize old annual costs or historical contract dates.
+alter table public.roster_roi alter column yearly_cap_hit drop not null;
+alter table public.roster_roi alter column yearly_cap_hit type numeric(16,6);
+alter table public.roster_roi alter column passing_epa type numeric(18,9);
+alter table public.roster_roi alter column rushing_epa type numeric(18,9);
+alter table public.roster_roi alter column receiving_epa type numeric(18,9);
+alter table public.roster_roi alter column total_epa type numeric(18,9);
+alter table public.roster_roi add column if not exists contract_apy_m numeric;
+alter table public.roster_roi add column if not exists contract_identity_status text;
+alter table public.roster_roi add column if not exists pfr_identity_status text;
+alter table public.roster_roi add column if not exists production_team_count integer;
+alter table public.roster_roi add column if not exists contract_year_signed integer;
+alter table public.roster_roi add column if not exists contract_years numeric;
+alter table public.roster_roi add column if not exists contract_type text;
+alter table public.roster_roi add column if not exists contract_selection_status text;
+alter table public.roster_roi add column if not exists season_cap_charge_m numeric;
+alter table public.roster_roi add column if not exists season_cash_m numeric;
+alter table public.roster_roi add column if not exists season_financial_team text;
+alter table public.roster_roi add column if not exists annual_financial_status text;
+alter table public.roster_roi add column if not exists annual_entry_count integer;
+alter table public.roster_roi add column if not exists contract_signed_date date;
+alter table public.roster_roi add column if not exists contract_effective_date date;
+alter table public.roster_roi add column if not exists contract_transaction_date date;
+alter table public.roster_roi add column if not exists contract_snapshot_at timestamptz;
+alter table public.roster_roi add column if not exists contract_source_url text;
+alter table public.roster_roi add column if not exists contract_apy_convention text;
+alter table public.roster_roi add column if not exists games_played integer;
+alter table public.roster_roi add column if not exists attempts integer;
+alter table public.roster_roi add column if not exists sacks_suffered integer;
+alter table public.roster_roi add column if not exists carries integer;
+alter table public.roster_roi add column if not exists targets integer;
+alter table public.roster_roi add column if not exists pass_opportunities integer;
+alter table public.roster_roi add column if not exists offensive_snaps integer;
+alter table public.roster_roi add column if not exists passing_cpoe_game_mean numeric;
+alter table public.roster_roi add column if not exists target_share_game_mean numeric;
+alter table public.roster_roi add column if not exists air_yards_share_game_mean numeric;
+alter table public.roster_roi add column if not exists cap_cost_per_epa numeric;
+alter table public.roster_roi add column if not exists cash_cost_per_epa numeric;
+alter table public.roster_roi add column if not exists through_week integer;
+alter table public.roster_roi add column if not exists shared_games integer;

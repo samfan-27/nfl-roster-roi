@@ -1,0 +1,27 @@
+{
+  "research_as_of": "2026-10-01 America/New_York",
+  "current_season": 2026,
+  "current_run_id": "71a8530e-6e1c-51e3-a57c-d5457a848f85",
+  "historical_snapshots": [
+    {
+      "season": 2021,
+      "run_id": "741d5e1b-6d15-4a02-b99f-b5d57e1a546d"
+    },
+    {
+      "season": 2022,
+      "run_id": "3ee41350-1055-49df-9d9f-6ebac2085b76"
+    },
+    {
+      "season": 2023,
+      "run_id": "355b1bc2-1415-4c4a-8cee-2bd0e0049498"
+    },
+    {
+      "season": 2024,
+      "run_id": "013bc332-7533-42d1-a587-16211d999e92"
+    },
+    {
+      "season": 2025,
+      "run_id": "33e312be-c203-46b1-b403-ea9372860902"
+    }
+  ]
+}

@@ -33,6 +33,8 @@ sql('grant usage on schema public to public;')
 sql(Path('infra/supabase/ddl.sql').read_text())
 sql(Path('infra/supabase/migrations/20261001_cloud_pipeline.sql').read_text())
 sql(Path('infra/supabase/migrations/20261001_snapshot_regression.sql').read_text())
+sql(Path('infra/supabase/migrations/20261002_apy_methodology.sql').read_text())
+sql(Path('infra/supabase/migrations/20261002_apy_methodology.sql').read_text())
 owner,other=str(uuid.uuid4()),str(uuid.uuid4())
 assert sql(f"select acquire_pipeline_lock('{owner}')")=='t'
 assert sql(f"select acquire_pipeline_lock('{other}')")=='f'
@@ -68,6 +70,19 @@ sql(f"select commit_ingestion('{owner}','{r3}',2026,'{regressed}','{{}}',false,1
 sql(f"select commit_ingestion('{owner}','{r3}',2026,'{coverage}','{{}}',true,1)",ok=False)
 assert sql('select run_id from ingestion_heads')==r2
 assert sql('select count(*) from history_heads')=='0'
+
+# Unknown APY is a missing value, not zero; new fields update atomically.
+r4=run()
+unknown=json.dumps(dict(season=2026,gsis_id='p1',player_name='Test',yearly_cap_hit=None,
+    contract_apy_m=None,season_cap_charge_m=3.722066,season_cash_m=3.674,
+    contract_type='Drafted',contract_identity_status='master_otc_identity',
+    pfr_identity_status='master_mapping',production_team_count=1,snaps=100,total_epa=5))
+sql(f"insert into roster_roi_stage values('{r4}',2026,'p1','{unknown}')")
+sql(f"select commit_ingestion('{owner}','{r4}',2026,'{coverage}','{{}}',false,1)")
+assert sql('select yearly_cap_hit is null from roster_roi')=='t'
+assert sql('select season_cap_charge_m from roster_roi')=='3.722066'
+assert sql('select season_cash_m from roster_roi')=='3.674'
+assert sql('select contract_type from roster_roi')=='Drafted'
 
 report='A validated weekly report. '*10
 w1=run('weekly')

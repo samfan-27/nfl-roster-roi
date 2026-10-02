@@ -2,58 +2,26 @@ from components.season_picker import select_season, show_coverage
 import streamlit as st
 from components.data_utils import load_offense_roster, load_pipeline_meta
 from components.charts import build_steal_scatter
-from utils.fmt import dollars_to_str
+from components.efficiency import prepare_finances, cohort_filter, efficiency_table, FINANCES
+
 
 def render():
-    st.title('Offensive Skill Position ROI — Overview')
-
-    col1, col2, col3, col4 = st.columns([1, 1.5, 2, 1])
-    with col1:
-        season = select_season()
-    with col2:
-        min_snaps = st.slider('Min snaps', 0, 1000, 100, 50)
-    with col3:
-        cohort = st.radio(
-            'Contract Cohort',
-            ['All', 'Veteran / Open Market Contracts', 'Rookie Contracts'],
-            horizontal=True
-        )
-    with col4:
-        st.write('')
-        use_log = st.checkbox('Log X-Axis', value=False)
-
+    st.title('Offensive production and contract efficiency')
+    season = select_season()
+    min_snaps = st.slider('Minimum offensive snaps', 0, 1000, 100, 50)
     df = load_offense_roster(season)
     show_coverage(df)
-
-    if not df.empty:
-        if min_snaps and 'snaps' in df.columns:
-            df = df[df['snaps'].fillna(0) >= min_snaps]
-
-        if cohort == "Veteran / Open Market Contracts":
-            df = df[df['is_rookie_deal'] == False]
-        elif cohort == "Rookie Contracts":
-            df = df[df['is_rookie_deal'] == True]
-
-        # Chart
-        fig = build_steal_scatter(df, x_col="yearly_cap_hit", y_col="total_epa", log_x=use_log)
-        st.plotly_chart(fig, width="stretch")
-
-        st.markdown(f'### Top Steals: {cohort}')
-        steals = df[(df['total_epa'] > 0) & (df['yearly_cap_hit'] > 0) & df['cost_per_epa'].notna()].sort_values('cost_per_epa', ascending=True).head(10)
-
-        if not steals.empty:
-            steals = steals.copy()
-            steals['apy_str'] = steals['yearly_cap_hit'].apply(dollars_to_str)
-            steals['cost_per_epa_dollars'] = steals['cost_per_epa'] * 1_000_000
-            display_cols = ['player_name', 'team', 'position', 'apy_str', 'total_epa', 'cost_per_epa_dollars', 'snaps']
-            st.dataframe(steals[display_cols], hide_index=True, width="stretch")
-        else:
-            st.info('No players meet the filter criteria for steals.')
-    else:
+    if df.empty:
         st.warning(f'No roster data found for the {season} season.')
-
+        return
+    df = prepare_finances(df)
+    position = st.selectbox('Position', sorted(df.position.unique()))
+    df = df.loc[df.position.eq(position) & df.snaps.ge(min_snaps)]
+    df = cohort_filter(df, 'home')
+    financial = st.selectbox('Financial measure', list(FINANCES))
+    use_log = st.checkbox('Log cost axis', value=False)
+    st.plotly_chart(build_steal_scatter(df, x_col=FINANCES[financial], log_x=use_log), width='stretch')
+    efficiency_table(df, financial)
     meta = load_pipeline_meta()
-    if not meta.empty and 'last_run' in meta.columns:
-        last_run_time = meta['last_run'].iloc[0]
-        st.caption(f'Data last updated: {last_run_time}')
-
+    if not meta.empty and 'last_run' in meta:
+        st.caption(f"Data last updated: {meta['last_run'].iloc[0]}")

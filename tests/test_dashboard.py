@@ -62,3 +62,20 @@ def test_reports_preserve_latest_and_allow_prior_versions_after_failed_attempt(m
     assert not app.exception
     assert 'old-version' in app.markdown[-1].value
     assert 'previous successful report' in app.info[0].value
+
+
+def test_financial_options_use_their_own_cost_definition(monkeypatch):
+    from views import home
+    from components import season_picker
+    record=dict(season=2026,player_name='Player',gsis_id='p',position='WR',team='JAX',snaps=150,
+                is_rookie_deal=True,contract_type='Drafted',yearly_cap_hit=1.,contract_apy_m=1.,
+                season_cap_charge_m=4.,season_cash_m=3.,total_epa=10.,cost_per_epa=.1,sample_flag='ok',notes='Regular season through week 3; 48 shared games')
+    monkeypatch.setattr(home,'load_offense_roster',lambda year:pd.DataFrame([record]))
+    monkeypatch.setattr(home,'load_pipeline_meta',lambda:pd.DataFrame())
+    monkeypatch.setattr(season_picker,'load_available_seasons',lambda:[2026])
+    app=AppTest.from_string('from views.home import render\nrender()').run()
+    measure=next(x for x in app.selectbox if x.label=='Financial measure')
+    measure.set_value('Season cap charge').run()
+    assert not app.exception
+    assert app.dataframe[0].value.cost_per_epa_dollars.iloc[0]==400_000
+    assert any('annual-cap efficiency' in x.value for x in app.subheader)

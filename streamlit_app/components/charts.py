@@ -9,17 +9,20 @@ def build_steal_scatter(df: pd.DataFrame, x_col: str = 'yearly_cap_hit', y_col: 
     if df.empty:
         return px.scatter(title='No data available for these filters')
 
-    df = df.copy()
+    df = df.loc[df[x_col].notna() & df[x_col].gt(0)].copy()
+    if df.empty:
+        return px.scatter(title='No known positive costs for this financial measure')
 
-    if x_col == 'yearly_cap_hit':
-        df['cap_dollars'] = df['yearly_cap_hit'].astype(float) * 1_000_000
+    if x_col in ['yearly_cap_hit', 'contract_apy_m', 'season_cap_charge_m', 'season_cash_m']:
+        df['cap_dollars'] = df[x_col].astype(float) * 1_000_000
         x = 'cap_dollars'
-        x_label = 'APY ($)'
+        x_label = {'yearly_cap_hit':'APY ($)', 'contract_apy_m':'Contract APY ($)', 'season_cap_charge_m':'Season cap charge ($)', 'season_cash_m':'Season cash ($)'}[x_col]
     else:
         x = x_col
         x_label = x_col
 
-    df['cost_per_epa_dollars'] = df['cost_per_epa'].astype(float) * 1_000_000
+    denominator_cost = df[x_col].astype(float)
+    df['cost_per_epa_dollars'] = (denominator_cost / df.total_epa * 1_000_000).where(denominator_cost.gt(0) & df.total_epa.gt(0))
 
     df['plot_size'] = df['snaps'].fillna(0).astype(int).clip(lower=10)
 
@@ -62,9 +65,9 @@ def build_steal_scatter(df: pd.DataFrame, x_col: str = 'yearly_cap_hit', y_col: 
 
     # Quadrant annotations using relative paper coordinates
     fig.add_annotation(x=0.02, y=0.98, xref='paper', yref='paper',
-                       text='High Value / Bargain', showarrow=False, font=dict(color='green'))
+                       text='Higher EPA / Lower cost', showarrow=False, font=dict(color='green'))
     fig.add_annotation(x=0.98, y=0.02, xref='paper', yref='paper',
-                       text='Overpaid / Liability', showarrow=False, font=dict(color='red'))
+                       text='Lower EPA / Higher cost', showarrow=False, font=dict(color='red'))
 
     if log_x:
         fig.update_xaxes(type="log")
@@ -104,7 +107,7 @@ def build_efficiency_scatter(df: pd.DataFrame):
             'total_epa': ':.2f'
         },
         labels={
-            'snaps': 'Volume (Total Snaps)',
+            'snaps': 'Offensive snaps',
             'epa_per_snap': 'Efficiency (EPA per Snap)',
             'yearly_cap_hit': 'APY ($M)',
             'cap_dollars': 'APY'
@@ -181,10 +184,10 @@ def build_team_scatter(df: pd.DataFrame):
     fig.add_shape(type="line", x0=median_x, x1=median_x, y0=df['team_total_epa'].min(), y1=df['team_total_epa'].max(), line=dict(dash="dash", color="gray", width=1))
     fig.add_shape(type="line", x0=df['team_total_cap_m'].min(), x1=df['team_total_cap_m'].max(), y0=median_y, y1=median_y, line=dict(dash="dash", color="gray", width=1))
 
-    fig.add_annotation(x=0.02, y=0.98, xref='paper', yref='paper', text='Moneyball (Cheap & Good)', showarrow=False, font=dict(color='green'))
-    fig.add_annotation(x=0.98, y=0.98, xref='paper', yref='paper', text='Premium (Expensive & Good)', showarrow=False)
-    fig.add_annotation(x=0.02, y=0.02, xref='paper', yref='paper', text='Rebuilding (Cheap & Bad)', showarrow=False)
-    fig.add_annotation(x=0.98, y=0.02, xref='paper', yref='paper', text='Cap Hell (Expensive & Bad)', showarrow=False, font=dict(color='red'))
+    fig.add_annotation(x=0.02, y=0.98, xref='paper', yref='paper', text='Lower APY / Higher attributed EPA', showarrow=False, font=dict(color='green'))
+    fig.add_annotation(x=0.98, y=0.98, xref='paper', yref='paper', text='Higher APY / Higher attributed EPA', showarrow=False)
+    fig.add_annotation(x=0.02, y=0.02, xref='paper', yref='paper', text='Lower APY / Lower attributed EPA', showarrow=False)
+    fig.add_annotation(x=0.98, y=0.02, xref='paper', yref='paper', text='Higher APY / Lower attributed EPA', showarrow=False, font=dict(color='red'))
 
     fig.update_traces(textposition='top center', marker=dict(size=10, opacity=0.8, color='#1f77b4'))
 

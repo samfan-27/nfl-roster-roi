@@ -4,6 +4,22 @@ import pandas as pd
 
 OFFENSIVE_POSITIONS = ("QB", "RB", "WR", "TE")
 FIRST_SEASON = 2021
+POSITION_FAMILIES = {
+    'QB':'QB', 'RB':'RB', 'HB':'RB', 'FB':'RB', 'WR':'WR', 'TE':'TE',
+    'OL':'OL', 'LT':'OL', 'RT':'OL', 'LG':'OL', 'RG':'OL', 'C':'OL', 'OT':'OL', 'G':'OL',
+    'DL':'DL', 'IDL':'DL', 'DT':'DL', 'DE':'DL', 'EDGE':'DL',
+    'LB':'LB', 'ILB':'LB', 'OLB':'LB', 'DB':'DB', 'CB':'DB', 'S':'DB', 'FS':'DB', 'SS':'DB',
+    'K':'K', 'P':'P', 'LS':'LS',
+}
+OTC_TEAM_CODES = dict(zip(
+    ['Cardinals','Falcons','Ravens','Bills','Panthers','Bears','Bengals','Browns',
+     'Cowboys','Broncos','Lions','Packers','Texans','Colts','Jaguars','Chiefs',
+     'Raiders','Chargers','Rams','Dolphins','Vikings','Patriots','Saints','Giants',
+     'Jets','Eagles','Steelers','49ers','Seahawks','Buccaneers','Titans','Commanders'],
+    ['ARI','ATL','BAL','BUF','CAR','CHI','CIN','CLE','DAL','DEN','DET','GB','HOU','IND',
+     'JAX','KC','LV','LAC','LA','MIA','MIN','NE','NO','NYG','NYJ','PHI','PIT','SF','SEA','TB','TEN','WAS']))
+OTC_TEAM_CODES.update({c:c for c in OTC_TEAM_CODES.values()})
+OTC_TEAM_CODES.update({'LAR':'LA','Washington':'WAS','Redskins':'WAS','Football Team':'WAS','WSH':'WAS'})
 # Millions of dollars per club. Source: https://www.nfl.com/news/nfl-salary-cap
 SALARY_CAP_MILLIONS = {
     2021: 182.5, 2022: 208.2, 2023: 224.8,

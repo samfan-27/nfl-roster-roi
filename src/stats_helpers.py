@@ -18,7 +18,7 @@ def compute_core_metrics(df: pd.DataFrame) -> pd.DataFrame:
     out['epa_per_snap'] = out.apply(lambda r: (r['total_epa'] / r['snaps']) if r['snaps'] > 0 else 0.0, axis=1)
 
     # yearly_cap_hit numeric
-    out['yearly_cap_hit'] = safe_numeric(out.get('yearly_cap_hit', 0.0))
+    out['yearly_cap_hit'] = safe_numeric(out.get('contract_apy_m', out.get('yearly_cap_hit', float('nan'))), fill=float('nan'))
 
     def cost_per_epa(row):
         te = row['total_epa']
@@ -40,6 +40,10 @@ def compute_core_metrics(df: pd.DataFrame) -> pd.DataFrame:
 
     out['cost_per_epa_per_100_snaps'] = out.apply(cost_per_100, axis=1)
 
+    out['contract_apy_m'] = out['yearly_cap_hit']
+    for field, metric in [('season_cap_charge_m', 'cap_cost_per_epa'), ('season_cash_m', 'cash_cost_per_epa')]:
+        cost = pd.to_numeric(out.get(field, pd.Series(float('nan'), index=out.index)), errors='coerce')
+        out[metric] = (cost / out.total_epa).where(cost.gt(0) & out.total_epa.gt(0))
     return out
 
 def shrink_total_epa(df: pd.DataFrame, tau: float = 200.0) -> pd.DataFrame:
@@ -115,9 +119,11 @@ def shrink_total_epa(df: pd.DataFrame, tau: float = 200.0) -> pd.DataFrame:
 def aggregate_team_efficiency(df):
     """Sum player-attributed production and annual APY, not net team EPA."""
     frame = df.copy()
-    frame['yearly_cap_hit'] = safe_numeric(frame['yearly_cap_hit'])
+    frame['yearly_cap_hit'] = safe_numeric(frame.get('contract_apy_m', frame['yearly_cap_hit']), fill=float('nan'))
     frame['total_epa'] = safe_numeric(frame['total_epa'])
     return frame.groupby('team', as_index=False).agg(
         team_total_epa=('total_epa', 'sum'),
-        team_total_cap_dollars=('yearly_cap_hit', lambda values: values.sum() * 1_000_000),
+        team_total_cap_dollars=('yearly_cap_hit', lambda values: values.sum(min_count=1) * 1_000_000),
+        known_apy_players=('yearly_cap_hit', 'count'),
+        unknown_apy_players=('yearly_cap_hit', lambda values: int(values.isna().sum())),
     )
