@@ -18,6 +18,7 @@ from etl.database import get_supabase_client, check_connection
 from etl.sources import (configure_sources, current_season, load_reference_tables,
                          load_season_tables, load_schedule, SourceNotReadyError)
 from src.analysis import build_roster_roi
+from src.opportunities import game_production
 from src.reporting import analysis_outputs
 from src.domain import FIRST_SEASON
 
@@ -35,9 +36,9 @@ def source_urls(season):
 
 def archive_inputs(store, season, tables, references, schedule, coverage, revision, parameters):
     artifacts = {name: store.put_frame(frame) for name, frame in {**tables, **references, 'schedule':schedule}.items()}
-    return dict(schema_version=1, season=season, fetched_at=utcnow(), code_revision=revision,
+    return dict(schema_version=2, methodology_version=2, season=season, fetched_at=utcnow(), code_revision=revision,
                 coverage=coverage, parameters=parameters, artifacts=artifacts, source_urls=source_urls(season),
-                dependencies={name:version(name) for name in ('nflreadpy','pandas','numpy','scikit-learn','pyarrow','supabase')})
+                dependencies={name:version(name) for name in ('nflreadpy','pandas','numpy','scikit-learn','scipy','pyarrow','supabase')})
 
 
 def get_run_id(kind, season):
@@ -56,6 +57,29 @@ def revision():
         if subprocess.check_output(['git','status','--porcelain'], text=True).strip():
             value += '-dirty'
     return value
+
+
+def rebuild_historical_metrics(store, snapshots, *, min_snaps=100, shrink_tau=200):
+    """Recalculate old canonical sources with the current financial definitions.
+
+    Frozen v1 metrics contain combined defensive snaps and discarded financial
+    details. Reusing those rows would silently bypass the methodology migration.
+    Source snapshots remain immutable and every download is hash checked.
+    """
+    rebuilt = []
+    for snapshot, _ in snapshots:
+        manifest = snapshot['manifest']
+        names = ['players','contracts','player_stats','snap_counts','rosters']
+        tables = {name:store.frame(manifest['artifacts'][name]) for name in names}
+        frame, _, _ = build_roster_roi(snapshot['season'], **tables, min_snaps=min_snaps,
+                                       shrink_tau=shrink_tau, snapshot_at=manifest['fetched_at'])
+        validate_metrics(frame, snapshot['season'])
+        shared = set(tables['player_stats'].loc[tables['player_stats'].season_type.eq('REG')].game_id) & set(
+            tables['snap_counts'].loc[tables['snap_counts'].game_type.eq('REG')].game_id)
+        if shared != set(snapshot['coverage']['shared_games']):
+            raise ValueError('Recalculated history differs from canonical game coverage')
+        rebuilt.append(frame)
+    return pd.concat(rebuilt,ignore_index=True)
 
 
 def execute(store, kind, season, *, grace_hours=48, min_snaps=100, shrink_tau=200,
@@ -93,9 +117,10 @@ def execute(store, kind, season, *, grace_hours=48, min_snaps=100, shrink_tau=20
             if kind == 'weekly':
                 manifest['analysis_inputs'] = {name:store.put_frame(frame) for name,frame in {**tables,'schedule':schedule.loc[schedule.week.le(coverage['cutoff_week'])]}.items()}
             metrics, audit, unmatched = build_roster_roi(season, **tables, **references,
-                                                        min_snaps=min_snaps, shrink_tau=shrink_tau)
+                                                        min_snaps=min_snaps, shrink_tau=shrink_tau, snapshot_at=fetched_at)
             validate_metrics(metrics, season)
-            for name, frame in dict(metrics=metrics, join_audit=audit, unmatched_contracts=unmatched).items():
+            for name, frame in dict(metrics=metrics, join_audit=audit, unmatched_contracts=unmatched,
+                                    game_components=game_production(season,players=references['players'],**tables)).items():
                 manifest['artifacts'][name] = store.put_frame(frame)
             if kind in ('refresh','bootstrap'):
                 manifest['manifest_object'] = store.put_json(manifest)
@@ -113,10 +138,11 @@ def execute(store, kind, season, *, grace_hours=48, min_snaps=100, shrink_tau=20
                 require_ready(previous_coverage, historical=True)
                 previous_tables = through_week(previous_tables, coverage['cutoff_week'])
                 before, _, _ = build_roster_roi(season-1, **previous_tables, **previous_references,
-                                                min_snaps=min_snaps, shrink_tau=shrink_tau)
-                historical_metrics = pd.concat([frame for _, frame in history], ignore_index=True)
+                                                min_snaps=min_snaps, shrink_tau=shrink_tau, snapshot_at=before_manifest['fetched_at'])
+                historical_metrics = rebuild_historical_metrics(store,history,min_snaps=min_snaps,shrink_tau=shrink_tau)
                 report, outputs = analysis_outputs(historical_metrics, metrics, before, season,
                                                     coverage['cutoff_week'], min_snaps=min_snaps)
+                outputs['historical_metrics_recalculated'] = historical_metrics
                 manifest['historical_run_ids'] = [s['run_id'] for s, _ in history]
                 manifest['previous_coverage'] = previous_snapshot['coverage']
                 fingerprint_input = dict(inputs={name:d['sha256'] for name,d in {**manifest['analysis_inputs'],**{n:manifest['artifacts'][n] for n in ('players','contracts')}}.items()},

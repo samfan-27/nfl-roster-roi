@@ -1,7 +1,8 @@
-numpy
-pandas
+numpy==2.4.2
+pandas==2.3.3
 matplotlib
-scikit-learn
+scikit-learn==1.8.0
+scipy==1.17.1
 polars
 pyarrow
 nflreadpy==0.1.5

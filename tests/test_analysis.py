@@ -86,3 +86,20 @@ def test_unknown_cost_and_nonpositive_epa_are_not_bargains():
     result = compute_core_metrics(frame)
     assert result.cost_per_epa.isna().all()
     assert result.epa_per_snap.iloc[-1] == 0
+
+
+def test_offensive_snap_scope_and_unknown_contract_coverage(tables):
+    tables['snap_counts'].loc[0,'defense_snaps']=20
+    tables['contracts'].loc[0,'apy']=float('nan')
+    result,_,_=build_roster_roi(2026,**tables)
+    row=result.iloc[0]
+    assert row.snaps==50 and row.offensive_snaps==50
+    assert pd.isna(row.contract_apy_m) and pd.isna(row.yearly_cap_hit)
+    assert pd.isna(row.cost_per_epa)
+    assert row.sample_flag=='missing_contract'
+
+
+def test_no_contract_record_keeps_roster_player_with_unknown_price(tables):
+    tables['contracts']=tables['contracts'].iloc[1:]
+    result,_,_=build_roster_roi(2026,**tables)
+    assert len(result)==1 and result.contract_apy_m.isna().all()

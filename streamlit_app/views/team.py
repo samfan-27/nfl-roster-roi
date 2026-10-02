@@ -5,7 +5,7 @@ from components.charts import build_team_heatmap, build_team_scatter
 from utils.fmt import dollars_to_str
 
 def render():
-    st.title('Team Efficiency')
+    st.title('Team production and known APY')
     st.markdown('Annual offensive skill-position APY versus player-attributed EPA.')
     st.caption('Passing and receiving EPA overlap. Totals are attributed to current/latest roster teams, not net team offensive EPA or actual cap spending.')
 
@@ -17,17 +17,17 @@ def render():
         st.warning('No team data available for this season.')
         return
 
-    tab1, tab2 = st.tabs(['ROI Scatter (Efficiency)', 'Treemap (Magnitude)'])
+    tab1, tab2 = st.tabs(['APY and attributed EPA', 'Treemap (Magnitude)'])
 
     with tab1:
-        st.subheader('Team Spending Efficiency')
-        st.markdown("Are teams getting what they pay for? (Top-Left is the optimal 'Moneyball' quadrant).")
+        st.subheader('Known APY and observed production')
+        st.markdown("APY totals cover known player contracts. Unmeasured obligations and overlapping EPA prevent an economic roster-value interpretation.")
         fig_scatter = build_team_scatter(df)
         st.plotly_chart(fig_scatter, width='stretch')
 
     with tab2:
         st.subheader('League Spending Landscape')
-        st.markdown('Size = Annual APY. Color = EPA Generated (Green is good, Red is bad).')
+        st.markdown('Size = known contract APY. Color = overlapping player-attributed EPA.')
         fig_heat = build_team_heatmap(df)
         st.plotly_chart(fig_heat, width='stretch')
 
@@ -50,6 +50,9 @@ def render():
         'Team Cost per EPA': 'Cost per EPA'
     }
 
+    for field in ['known_apy_players','unknown_apy_players']:
+        if field in df_display:
+            display_cols[field] = field.replace('_',' ').capitalize()
     st.dataframe(
         df_display.rename(columns=display_cols)[list(display_cols.values())],
         hide_index=True,

@@ -31,53 +31,52 @@ page = st.sidebar.radio('Go to', list(PAGES.keys()), index=0)
 
 if page == 'About / Methodology':
     st.title('About & Methodology')
-    st.markdown('### Executive Summary')
-    st.markdown('''
-    This dashboard calculates the **Financial Return on Investment (ROI)** for NFL offensive skill positions (QB, RB, WR, TE).
-    It compares recorded production with contract APY to describe position-level cost efficiency. Results are descriptive and sensitive to coverage and contract assumptions.
-    ''')
+    st.markdown("""
+    This project studies observed offensive production, contract efficiency and
+    retrospective market-price associations for QB, RB, WR and TE players.
 
-    st.divider()
+    **Financial definitions.** Contract APY, the season's cap charge and the
+    season's cash payment are distinct amounts, stored in millions. Unknown or
+    conflicting costs remain unknown. Annual costs on trades require compatible
+    team and production scope. The older `yearly_cap_hit` field is an APY alias.
 
-    st.markdown('### Data Sources')
-    st.markdown('''
-    - **Production Data:** Play-by-play Expected Points Added (EPA) sourced via `nflreadpy` (nflfastR).
-    - **Usage Data:** Snap counts tracked via Pro-Football-Reference (PFR).
-    - **Financial Data:** Contract metadata and salary cap figures sourced via OverTheCap (OTC).
-    ''')
+    **Production.** Raw passing, rushing and receiving EPA use regular-season
+    games shared by nflverse statistics and PFR snap data. Snaps cover offense.
+    Passing and receiving EPA overlap; their sum does not allocate team value.
+    Attempts, carries and targets describe role volume. Research rate exposures
+    additionally reconcile the EPA play filters, including two-point attempts.
+    Routes and blocking are not measured by these sources.
 
-    st.divider()
+    **Efficiency.** Positive-EPA APY efficiency compares APY per observed EPA
+    within position and recorded contract mechanism. Separate cap and cash
+    options answer different expenditure questions. Negative EPA is retained
+    elsewhere and does not establish that a player is below replacement level.
+    Rookie labels are estimates; non-rookie deals include multiple markets.
 
-    st.markdown('### Core Metrics & Mathematical Adjustments')
-    st.markdown('''
-    *   **`total_epa`**: The raw sum of a player's Passing, Rushing, and Receiving Expected Points Added from regular-season games shared by both statistics and snap-count sources.
-    *   **`yearly_cap_hit` (APY)**: Average Per Year contract value (in millions). APY describes average annual contract value; it does not measure the current season cap charge or independently establish market value.
-    *   **`cost_per_epa`**: Calculated as `yearly_cap_hit / total_epa`. Stored in millions of dollars per EPA. Players with nonpositive EPA or unknown/zero APY are excluded from value rankings; that exclusion is not a complete assessment of player value.
-    *   **Position Shrinkage**: The normalized cost-per-100-snaps metric uses a rate shrunk toward the same season and position mean. Raw total EPA, EPA per snap, and cost per EPA remain unadjusted. Shrinkage is a heuristic, not a fitted Bayesian model.
-    *   **Contract Cohorts**: Rookie status is an estimate using draft year, contract signing year, and a bounded rookie window. Roster experience is not CBA accrued seasons; the flag does not determine legal ERFA status.
-    *   **Financial Scope**: APY is in millions of dollars. `cap_pct_of_team` is APY divided by that season's league cap, not an actual team cap charge. Contract selection uses the latest signing year no later than the season; historical timing and same-year transactions are approximate.
-    *   **Team Scope**: Team charts sum player-attributed EPA and APY by current/latest roster team. Passing and receiving EPA overlap; the sum is not net team offensive EPA or actual cap spending.
-    *   **In-Season Scope**: Production is season-to-date. Full annual APY divided by partial-season EPA is not comparable to a completed season. No automatic full-season valuation is inferred.
-    ''')
+    **Reliability.** A snap threshold alone does not establish precision. The
+    offline research reports game/week sensitivity, opportunity-specific rate
+    pooling and future observed-rate coverage. Conditional normal reference
+    bands are not validated confidence intervals for individual talent.
+    Acquisition-based replacement cohorts are sensitivity proxies.
 
-    st.divider()
+    **Contract research.** Completed-season historical associations hold out
+    each player's whole history, including later veteran seasons when scoring
+    rookies. The inverse log model estimates a transformed geometric center.
+    Separate event models compare conditional means and medians using only
+    pre-event production. Exact signing/effective dates are often unavailable.
+    Retrospective labels do not reconstruct contemporaneous offer information.
 
-    st.markdown('### Page Architecture')
-    st.markdown('''
-    1.  **Home (Macro View)**: A league-wide scatter plot showing the raw relationship between capital spent and points generated. Used to spot absolute outliers.
-    2.  **By Position (Micro View)**: Positional stratification. Because QBs inherently generate significantly more EPA than RBs, plotting them together obscures relative skill. This page solves the "Apples to Oranges" problem and includes Usage vs. Efficiency (Snaps vs. EPA/Snap) quadrants.
-    3.  **Team Efficiency (Macro Aggregation)**: Evaluates Front Office performance. Aggregates total positional spending versus total offensive output to visualize which GMs are operating in the optimal "Moneyball" quadrant (low spend, high production).
-    4.  **Player Detail (Dossier)**: A micro-level search engine isolating how a specific player generated their EPA (Passing vs. Rushing vs. Receiving) and flagging their CBA constraint status.
-    ''')
+    **Roster decisions.** Future participation, opportunity allocation and
+    component rates are evaluated separately using chronological preseason
+    tests. In-season EPA is not automatically annualized. APY differences do
+    not establish current cap savings. Economic surplus requires compatible
+    replacement forecasts, a contribution-price assumption, and complete
+    cap/cash/guarantee/exit schedules over an explicit horizon.
 
-    st.divider()
-
-    st.markdown('### Completed-Season APY Research')
-    st.markdown('''
-    The analysis notebooks call a shared position-specific Ridge model using completed-season EPA, snaps, EPA per snap, age, and experience. The target is APY as a share of the season's league salary cap.
-
-    Estimated veteran contracts form the training cohort. Nested cross-validation holds out all years of each player together, with tuning inside each training fold. The incomplete season is excluded from annual-volume training and scoring. Historical surplus estimates are research outputs, not predictions of future offers.
-    ''')
+    **Sources.** Production: nflverse/nflfastR; snaps: PFR; contracts: OTC via
+    nflverse. Team charts describe grouped player-attributed EPA and known APY;
+    they do not establish total franchise obligations or front-office quality.
+    """)
 
 else:
     page_module = PAGES[page]

@@ -63,31 +63,36 @@ Sources: [Supabase project pausing](https://supabase.com/docs/guides/platform/fr
 
 ## Analysis methodology
 
-The dataset contains 2021 onward, including 2026 when published. UI season choices come from stored data. Each season uses **regular-season games present in both weekly EPA and PFR snap sources**. Missing releases, incompatible schemas, and empty shared production coverage fail the refresh instead of publishing fabricated zero production. Each row records the week and shared-game count in `notes`.
+Regular-season production uses games shared by weekly nflverse statistics and PFR snaps. Raw passing, rushing and receiving EPA are preserved; passing and receiving attributions overlap. Offensive snaps, official opportunities and verified PBP EPA opportunities have separate definitions.
 
-- `total_epa`: raw passing + rushing + receiving EPA. Raw components, total, and EPA per snap remain consistent.
-- `yearly_cap_hit`: retained database name for **contract APY in millions**, not actual annual cap charge.
-- `cap_pct_of_team`: APY / that season's league cap, a fraction. It is neither actual team cap usage nor OTC's cap share at signing.
-- `cost_per_epa`: APY / positive raw EPA, in millions. Unknown/zero cost and nonpositive EPA are excluded from value rankings.
-- `cost_per_epa_per_100_snaps`: APY / (100 × EPA rate shrunk toward the same-season positional mean). Default shrinkage strength is 200 snaps; this is a heuristic.
-- `is_rookie_deal`: estimated from signing year, draft year/round, and a bounded rookie window. Roster experience is not CBA accrued seasons; this flag does not determine legal ERFA status.
+Contract APY (`contract_apy_m`), annual cap charge (`season_cap_charge_m`) and annual cash (`season_cash_m`) are distinct, in millions. `yearly_cap_hit` is a deprecated APY alias. Unknown or ambiguous financial values remain unknown; traded-player costs require compatible team/production scope. Source contract mechanisms accompany estimated rookie labels.
 
-Contract selection uses the latest signing year no later than the analyzed season, with current active status and APY as same-year tie-breakers. Exact historical transaction dates and extension effective dates are not resolved. Team charts assign season production to the latest roster team and sum player-attributed EPA. Passing and receiving EPA overlap; the result is not net team offensive EPA or actual team cap spending.
+Dashboard **Positive-EPA APY efficiency** ranks observed ratios within position and contract mechanism. Annual cap and cash options answer separate expenditure questions. Contribution volume and opportunities accompany efficiency. Negative EPA is retained in contribution research; it is not a replacement-level definition.
 
-**In-season caveat:** annual APY divided by partial-season EPA is not comparable to a completed-season ratio. The analysis report compares the current and prior season through the same week. Missing matches and trades still limit interpretation; rankings are descriptive.
+## Phase 1–3 research
 
-## Completed-season APY research
+The completed-season Ridge association saves whole-player held-out predictions, including historical rookies. Mean/median baselines, dollar errors, bias and chronological associations accompany the output. The inverse log target is a transformed geometric center, not an arithmetic mean or causal player value. Training-only cap-share bounds apply in both validation and scoring.
 
-`src/valuation.py` contains one Ridge model per position, using EPA, snaps, EPA/snap, age, and experience. The target is `log1p(100 × APY / season cap)`. Training uses estimated veteran contracts. Incomplete seasons are excluded from both training and annual-volume scoring. No unsupported full-season valuation is produced from a few weeks of data.
+Verified game-level component models learn hierarchical pooling and compare later observed production. Acquisition-based replacement cohorts and game/week rank sensitivity remain explicit proxies. Event models compare mean-price Ridge/Gamma and median quantile predictions on later, player-purged contract events, using conservative pre-signing features. Preseason forecasts include future zero outcomes and benchmark rate/volume products against direct EPA prediction.
 
-Nested `GroupKFold` keeps each player's seasons together. Hyperparameters are tuned inside each outer training fold. MAE and R² are computed from held-out players. Final-model fitted surplus estimates are research artifacts, not independently held-out valuations for every training row or predictions of future offers. Predicted APY is bounded at 110% of the historical position's maximum observed APY, and feature extrapolation is flagged.
+No incomplete season enters annual-volume fitting or scoring. Equivalent APY pricing discounts require verified compatible terms. Economic roster surplus requires validated replacement forecasts, an explicit contribution-price assumption and complete horizon-specific cap/cash/guarantee/exit schedules; unsupported quantities stay unknown.
 
-`python -m etl.analyze` writes `latest_analysis.md`, `matched_week_comparison.csv`, `model_diagnostics.csv`, and `roster_roi_scored.csv`. Both notebooks call the shared calculation modules instead of maintaining separate salary-cap maps or models. The dashboard displays descriptive ROI; cloud mode adds published weekly research reports and version history.
+Read [implementation and reproduction](docs/apy-methodology-implementation.md) and [validation results](docs/apy-methodology-validation.md). Before refreshing an existing deployment, apply the additive `20261002_apy_methodology.sql` migration after the existing cloud migrations. Core numerical dependencies are pinned; inputs, folds, seeds and dependency versions are archived.
+
+```bash
+# Read-only canonical downloads; then offline Phase 1–3 research.
+PYTHONPATH=. python scripts/download_methodology_inputs.py
+PYTHONPATH=. python scripts/download_epa_exposures.py
+python -m etl.research
+
+# Local annual analysis requires corrected history with offensive snap scope.
+python -m etl.analyze --input artifacts/methodology-v2/results/historical_metrics.csv
+```
 
 ## Engineering boundaries
 
-- `src/domain.py`: NFL salary caps, positions, numeric coercion, and cohort assumptions.
-- `src/analysis.py`, `src/stats_helpers.py`, `src/valuation.py`, `src/reporting.py`: pure dataframe calculations without HTTP, credentials, or database writes.
+- `src/domain.py`, `src/contracts.py`, `src/opportunities.py`: NFL definitions, identity/financial reconciliation and EPA exposure scope.
+- `src/analysis.py`, `src/stats_helpers.py`, `src/valuation.py`, `src/contribution.py`, `src/pricing.py`, `src/forecasting.py`, `src/roster_decisions.py`, `src/reporting.py`: pure calculations and validation without credentials or database writes.
 - `etl/sources.py`: nflverse loading, cache freshness, and source schema checks.
 - `etl/database.py`: Supabase clients, availability checks, serialization, and upserts.
 - `etl/etl.py`, `etl/analyze.py`: orchestration and artifact writing.

@@ -20,6 +20,9 @@ def main(argv=None):
         from etl.cloud import main as cloud_main
         return cloud_main(['weekly'])
     frame=pd.read_csv(args.input)
+    required={'contract_apy_m','offensive_snaps'}
+    if not required.issubset(frame) or frame.offensive_snaps.isna().any() or not frame.snaps.eq(frame.offensive_snaps).all():
+        raise ValueError('Rebuild local history with explicit APY and offensive snaps, or use the verified etl.research historical_metrics.csv')
     latest=current_season()
     configure_sources(fresh=True)
     references=load_reference_tables()
@@ -38,7 +41,7 @@ def main(argv=None):
     output=Path(args.output)
     output.parent.mkdir(parents=True,exist_ok=True)
     output.write_text(report)
-    filenames=dict(scored='roster_roi_scored.csv',diagnostics='model_diagnostics.csv',comparison='matched_week_comparison.csv',summary='position_summary.csv',candidates='value_candidates.csv')
+    filenames=dict(financial_coverage='financial_coverage.csv',scored='roster_roi_scored.csv',diagnostics='model_diagnostics.csv',comparison='matched_week_comparison.csv',summary='position_summary.csv',candidates='value_candidates.csv',temporal_predictions='temporal_predictions.csv')
     for name,data in outputs.items():
         data.to_csv(output.parent/filenames[name],index=False)
     print(f'Wrote {output}')

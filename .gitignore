@@ -215,3 +215,6 @@ artifacts/
 # Local handoff and project status notes
 /HANDOFF.md
 /PROJECT_STATUS.md
+
+# Local methodology proposal; maintained implementation docs stay tracked.
+/docs/apy-methodology-audit-2026-10-01.md

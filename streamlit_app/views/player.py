@@ -145,7 +145,7 @@ def render():
         if is_rookie:
             st.info('🟢 **Contract Cohort: Estimated Rookie Deal**')
         else:
-            st.info('🔵 **Contract Status: Veteran / Open Market Deal**')
+            st.info('🔵 **Contract Status: Estimated Non-rookie Deal**')
 
         m1, m2, m3, m4 = st.columns(4)
         m1.metric('APY (Cost)', dollars_to_str(row['yearly_cap_hit']))
@@ -154,11 +154,14 @@ def render():
 
         cost_per_epa = row.get('cost_per_epa')
         if pd.isna(cost_per_epa) or cost_per_epa is None:
-            cpe_display = 'Liability (Negative EPA)'
+            cpe_display = 'Undefined for nonpositive EPA or unknown cost'
         else:
             cpe_display = f"${(cost_per_epa * 1_000_000):,.0f}"
 
-        m4.metric('Cost per EPA', cpe_display)
+        m4.metric('APY per positive EPA', cpe_display)
+        st.caption(f"Contract mechanism: {row.get('contract_type', 'Unknown')}")
+        st.write({'Season cap charge ($M)': row.get('season_cap_charge_m'), 'Season cash ($M)': row.get('season_cash_m'),
+                  'Pass attempts + sacks (proxy)': row.get('pass_opportunities'), 'Carries': row.get('carries'), 'Targets': row.get('targets')})
 
         st.divider()
 
@@ -214,13 +217,13 @@ def render():
 
             try:
                 if player_percentile >= 75 and row['yearly_cap_hit'] < median_cost_disp:
-                    st.success(' **Elite Value** (Top quartile production, below median cost)')
+                    st.success(' **High observed EPA, below median APY**')
                 elif player_percentile <= 25 and row['yearly_cap_hit'] > median_cost_disp:
-                    st.error(' **Roster Liability** (Bottom quartile production, above median cost)')
+                    st.error(' **Low observed EPA, above median APY**')
                 else:
-                    st.info(' **Market Value** (Production aligns with cost)')
+                    st.info(' **Within observed comparison range**')
             except Exception:
-                st.info(' **Market Value** (insufficient data for classification)')
+                st.info(' **Insufficient comparison data**')
 
         st.divider()
 

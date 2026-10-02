@@ -17,6 +17,7 @@ from etl.database import check_connection, get_supabase_client, upsert_supabase,
 from etl.sources import configure_sources, current_season, load_reference_tables, load_season_tables, SourceNotReadyError
 from etl.utils import write_artifacts
 from src.analysis import build_roster_roi
+from src.opportunities import game_production
 from src.domain import FIRST_SEASON
 
 
@@ -72,7 +73,7 @@ def main(argv=None):
     try:
         configure_sources(fresh=args.fresh)
         references = load_reference_tables()
-        metrics, audits, unmatched, coverage = [], [], [], []
+        metrics, audits, unmatched, coverage, game_tables = [], [], [], [], []
         for season in seasons:
             logger.info('Building regular-season ROI for {}', season)
             try:
@@ -84,10 +85,11 @@ def main(argv=None):
                 raise
             frame, audit, missing = build_roster_roi(
                 season, **references, **tables, min_snaps=args.min_snaps,
-                shrink_tau=args.shrink_tau,
+                shrink_tau=args.shrink_tau, snapshot_at=pd.Timestamp.now(tz='UTC').isoformat(),
             )
             if frame.empty or frame.duplicated(['season', 'gsis_id']).any():
                 raise ValueError(f'Empty or duplicate player-season metrics for {season}')
+            game_tables.append(game_production(season,players=references['players'],**tables))
             metrics.append(frame)
             audits.append(audit)
             missing = missing.assign(season=season)
@@ -98,6 +100,8 @@ def main(argv=None):
         combined = pd.concat(metrics, ignore_index=True)
         history = merge_local_history(combined, args.output)
         write_artifacts(history, pd.concat(audits, ignore_index=True), pd.concat(unmatched, ignore_index=True), args.output)
+        game_path = Path(args.output).with_name(Path(args.output).stem + '_games.parquet')
+        pd.concat(game_tables, ignore_index=True).to_parquet(game_path, index=False)
         rows_written = 0
         if sup is not None:
             rows_written = upsert_supabase(sup, combined)
