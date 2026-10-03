@@ -6,6 +6,19 @@ from io import BytesIO
 import json
 import uuid
 import pandas as pd
+from postgrest.exceptions import APIError
+
+
+METHODOLOGY_MIGRATION = 'infra/supabase/migrations/20261002_apy_methodology.sql'
+METHODOLOGY_COLUMNS = (
+    'contract_apy_m', 'season_cap_charge_m', 'season_cash_m', 'offensive_snaps',
+    'contract_identity_status', 'pfr_identity_status',
+)
+
+
+class SchemaNotReady(RuntimeError):
+    def __init__(self):
+        super().__init__(f'Apply {METHODOLOGY_MIGRATION} before cloud ingestion or analysis.')
 
 
 class PipelineBusy(RuntimeError):
@@ -61,6 +74,21 @@ class CloudStore:
 
     def assert_lock(self):
         self.rpc('assert_pipeline_lock', p_owner=self.owner)
+
+    def require_methodology_schema(self):
+        """Check the additive migration before downloading or archiving inputs.
+
+        Selecting zero rows validates column availability without retrieving
+        player data. Only missing-column errors become migration guidance;
+        authentication, connectivity and other database failures retain their
+        original exception type. Never expose transport exception messages.
+        """
+        try:
+            self.client.table('roster_roi').select(','.join(METHODOLOGY_COLUMNS)).limit(0).execute()
+        except APIError as exc:
+            if exc.code in ('42703', 'PGRST204'):
+                raise SchemaNotReady() from None
+            raise
 
     def begin(self, run_id, kind, season, revision):
         self.active = (run_id, kind, season, revision)

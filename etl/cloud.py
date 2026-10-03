@@ -12,7 +12,7 @@ from pathlib import Path
 import uuid
 import pandas as pd
 from dotenv import load_dotenv
-from etl.cloud_store import CloudStore, PipelineBusy, utcnow, validate_metrics
+from etl.cloud_store import CloudStore, PipelineBusy, SchemaNotReady, utcnow, validate_metrics
 from etl.coverage import assess_coverage, require_ready, through_week, CoverageNotReady
 from etl.database import get_supabase_client, check_connection
 from etl.sources import (configure_sources, current_season, load_reference_tables,
@@ -95,6 +95,7 @@ def execute(store, kind, season, *, grace_hours=48, min_snaps=100, shrink_tau=20
                 check_connection(store.client)
                 store.finish(run_id, 'succeeded')
                 return dict(run_id=run_id, status='succeeded')
+            store.require_methodology_schema()
             configure_sources(fresh=True)
             references = load_reference_tables()
             tables, schedule = load_season_tables(season), load_schedule(season)
@@ -204,6 +205,10 @@ def main(argv=None):
     except PipelineBusy:
         print(json.dumps(dict(status='busy', error_type='PipelineBusy')))
         return 75
+    except SchemaNotReady as exc:
+        # This message is authored locally; it contains no transport details.
+        print(json.dumps(dict(status='failed', error_type='SchemaNotReady', action=str(exc))))
+        return 1
     except Exception as exc:
         print(json.dumps(dict(status='failed', error_type=type(exc).__name__)))
         return 1

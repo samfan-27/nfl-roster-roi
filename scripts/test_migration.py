@@ -30,11 +30,23 @@ else:raise RuntimeError('Test database did not start')
 
 sql('create role anon;create role authenticated;create role service_role bypassrls;create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint);')
 sql('grant usage on schema public to public;')
-sql(Path('infra/supabase/ddl.sql').read_text())
+# Start from the actual legacy bootstrap, without its appended v2 alterations.
+# This verifies an upgrade of the old NOT NULL/precision schema, not only a
+# migration applied to an already-updated empty database.
+ddl=Path('infra/supabase/ddl.sql').read_text()
+legacy_ddl,separator,_=ddl.partition('-- Explicit financial definitions and offensive exposure; apply before refreshing.')
+assert separator, 'Legacy bootstrap boundary is missing'
+sql(legacy_ddl)
+sql("insert into roster_roi(season,gsis_id,player_name,yearly_cap_hit) values(2025,'legacy','Existing player',20.01)")
+sql("insert into roster_roi(season,gsis_id,player_name,yearly_cap_hit) values(2025,'unknown','Unknown price',null)",ok=False)
 sql(Path('infra/supabase/migrations/20261001_cloud_pipeline.sql').read_text())
 sql(Path('infra/supabase/migrations/20261001_snapshot_regression.sql').read_text())
 sql(Path('infra/supabase/migrations/20261002_apy_methodology.sql').read_text())
 sql(Path('infra/supabase/migrations/20261002_apy_methodology.sql').read_text())
+assert sql("select yearly_cap_hit from roster_roi where gsis_id='legacy'")=='20.010000'
+assert sql("select contract_apy_m is null from roster_roi where gsis_id='legacy'")=='t'
+# Remove only the setup fixture in this disposable test database.
+sql("delete from roster_roi where gsis_id='legacy'")
 owner,other=str(uuid.uuid4()),str(uuid.uuid4())
 assert sql(f"select acquire_pipeline_lock('{owner}')")=='t'
 assert sql(f"select acquire_pipeline_lock('{other}')")=='f'

@@ -4,7 +4,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 import pandas as pd
 import pytest
-from etl.cloud_store import CloudStore,PipelineBusy,read_pages
+from etl.cloud_store import CloudStore,PipelineBusy,SchemaNotReady,METHODOLOGY_COLUMNS,read_pages
+from postgrest.exceptions import APIError
 from etl import cloud
 
 
@@ -114,3 +115,42 @@ def test_regression_baseline_includes_canonical_history_and_dashboard():
         queries[name].select.return_value.eq.return_value.execute.return_value.data=[{'run_id':run_id}]
     store.snapshot=lambda key:dict(coverage=dict(shared_games=['g1'] if key=='daily' else ['g1','g2']))
     assert store.previous_games(2025)==['g1','g2']
+
+
+@pytest.mark.parametrize('code', ['42703', 'PGRST204'])
+def test_missing_financial_schema_has_safe_migration_guidance(code):
+    client=MagicMock();store=CloudStore(client)
+    client.table.return_value.select.return_value.limit.return_value.execute.side_effect=APIError(
+        dict(code=code,message='transport secret',details=None,hint=None))
+    with pytest.raises(SchemaNotReady,match='20261002_apy_methodology.sql') as error:
+        store.require_methodology_schema()
+    assert 'transport secret' not in str(error.value)
+    client.table.return_value.select.assert_called_once_with(','.join(METHODOLOGY_COLUMNS))
+    client.table.return_value.select.return_value.limit.assert_called_once_with(0)
+
+
+def test_schema_check_does_not_mislabel_database_access_failure():
+    client=MagicMock();store=CloudStore(client)
+    client.table.return_value.select.return_value.limit.return_value.execute.side_effect=APIError(
+        dict(code='42501',message='permission denied',details=None,hint=None))
+    with pytest.raises(APIError):store.require_methodology_schema()
+
+
+def test_missing_migration_stops_before_source_reads_or_cloud_archives(monkeypatch):
+    store=MagicMock();store.begin.return_value=True
+    store.require_methodology_schema.side_effect=SchemaNotReady()
+    loader=MagicMock();monkeypatch.setattr(cloud,'load_reference_tables',loader)
+    archive=MagicMock();monkeypatch.setattr(cloud,'archive_inputs',archive)
+    with pytest.raises(SchemaNotReady):cloud.execute(store,'refresh',2026,code_revision='test')
+    loader.assert_not_called();archive.assert_not_called();store.ingest.assert_not_called()
+    store.finish.assert_called_once_with(store.begin.call_args.args[0],'failed',None,'SchemaNotReady')
+
+
+def test_missing_migration_cli_reports_required_action_without_transport_data(monkeypatch,capsys):
+    monkeypatch.setattr(cloud,'get_supabase_client',MagicMock())
+    monkeypatch.setattr(cloud,'execute',MagicMock(side_effect=SchemaNotReady()))
+    assert cloud.main(['refresh','--season','2026'])==1
+    import json
+    result=json.loads(capsys.readouterr().out)
+    assert result['error_type']=='SchemaNotReady'
+    assert '20261002_apy_methodology.sql' in result['action']
