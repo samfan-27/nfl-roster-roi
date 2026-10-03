@@ -117,6 +117,16 @@ fractional/nonfinite/overflowing integer counts fail before the first staged wri
 Failed database CLI results include only a recognized SQLSTATE/PostgREST code;
 exception messages, request URLs and headers remain excluded.
 
+Apply `infra/supabase/migrations/20261002_single_pass_ingestion.sql` after the APY
+migration. It preserves the atomic commit and existing RPC signature/permissions,
+but moves JSON conversion into a LATERAL function scan. Expanding a composite
+function result directly in a SELECT repeats that function for each column,
+which can exceed the free database's API statement timeout on the wider v2
+schema. The function scan converts each staged row once. See the
+[PostgreSQL composite-type documentation](https://www.postgresql.org/docs/current/rowtypes.html#ROWTYPES-USAGE).
+Keep timeout settings and atomicity intact; verify real staged rows and retained
+data after rollout.
+
 ## Locks, retries and diagnostics
 
 All new writers/manual runs use the same Postgres lease. Each attempt receives

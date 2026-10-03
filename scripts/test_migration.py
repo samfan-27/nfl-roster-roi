@@ -43,6 +43,8 @@ sql(Path('infra/supabase/migrations/20261001_cloud_pipeline.sql').read_text())
 sql(Path('infra/supabase/migrations/20261001_snapshot_regression.sql').read_text())
 sql(Path('infra/supabase/migrations/20261002_apy_methodology.sql').read_text())
 sql(Path('infra/supabase/migrations/20261002_apy_methodology.sql').read_text())
+sql(Path('infra/supabase/migrations/20261002_single_pass_ingestion.sql').read_text())
+sql(Path('infra/supabase/migrations/20261002_single_pass_ingestion.sql').read_text())
 sql("select (jsonb_populate_record(null::roster_roi,'{\"contract_year_signed\":2026.0}'::jsonb)).contract_year_signed",ok=False)
 assert sql("select (jsonb_populate_record(null::roster_roi,'{\"contract_year_signed\":2026}'::jsonb)).contract_year_signed")=='2026'
 assert sql("select yearly_cap_hit from roster_roi where gsis_id='legacy'")=='20.010000'
@@ -70,12 +72,14 @@ assert sql('select count(*) from ingestion_heads')=='0'
 sql(f"select commit_ingestion('{owner}','{r}',2026,'{coverage}','{{}}',false,1)")
 assert sql('select count(*) from roster_roi')=='1'
 assert sql('select last_row_count from pipeline_meta')=='1'
+stored_id=sql("select id from roster_roi where gsis_id='p1'")
 assert sql(f"select pipeline_run_event('{owner}','{r}','refresh',2026,'test','running',null,null)")=='f'
 # Reuse existing row id on next upsert; retain omitted player-season rows.
 r2=run()
 sql(f"insert into roster_roi_stage values('{r2}',2026,'p1','{payload}')")
 sql(f"select commit_ingestion('{owner}','{r2}',2026,'{coverage}','{{}}',false,1)")
 assert sql('select count(*) from roster_roi')=='1'
+assert sql("select id from roster_roi where gsis_id='p1'")==stored_id
 
 r3=run()
 sql(f"insert into roster_roi_stage values('{r3}',2026,'p1','{payload}')")
