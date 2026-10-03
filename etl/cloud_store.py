@@ -6,6 +6,25 @@ from io import BytesIO
 import json
 import uuid
 import pandas as pd
+from postgrest.exceptions import APIError
+
+
+METHODOLOGY_MIGRATION = 'infra/supabase/migrations/20261002_apy_methodology.sql'
+METHODOLOGY_COLUMNS = (
+    'contract_apy_m', 'season_cap_charge_m', 'season_cash_m', 'offensive_snaps',
+    'contract_identity_status', 'pfr_identity_status',
+)
+INTEGER_METRIC_COLUMNS = (
+    'season', 'years_exp', 'contract_year_signed', 'production_team_count',
+    'annual_entry_count', 'games_played', 'attempts', 'sacks_suffered', 'carries',
+    'targets', 'pass_opportunities', 'offensive_snaps', 'snaps', 'through_week',
+    'shared_games',
+)
+
+
+class SchemaNotReady(RuntimeError):
+    def __init__(self):
+        super().__init__(f'Apply {METHODOLOGY_MIGRATION} before cloud ingestion or analysis.')
 
 
 class PipelineBusy(RuntimeError):
@@ -14,6 +33,26 @@ class PipelineBusy(RuntimeError):
 
 def records(frame):
     return json.loads(frame.to_json(orient='records', date_format='iso'))
+
+
+def metric_records(frame):
+    """Preserve nullable PostgreSQL integers without altering research frames.
+
+    Pandas promotes counts/signing years to floats when values are missing.
+    JSON numbers such as 2026.0 cannot populate an integer PostgreSQL field.
+    Convert only integer schema fields; keep missing values and fractional
+    financial/rate fields intact, and reject fractional or overflowing counts.
+    """
+    normalized = frame.copy()
+    for name in INTEGER_METRIC_COLUMNS:
+        if name not in normalized:
+            continue
+        values = pd.to_numeric(normalized[name], errors='raise')
+        present = values.dropna()
+        if not (present.between(-(2**31), 2**31-1).all() and present.eq(present.round()).all()):
+            raise ValueError(f'{name} must contain signed 32-bit whole integers or missing values')
+        normalized[name] = values.astype('Int32')
+    return records(normalized)
 
 
 def read_pages(query, page_size=500):
@@ -61,6 +100,21 @@ class CloudStore:
 
     def assert_lock(self):
         self.rpc('assert_pipeline_lock', p_owner=self.owner)
+
+    def require_methodology_schema(self):
+        """Check the additive migration before downloading or archiving inputs.
+
+        Selecting zero rows validates column availability without retrieving
+        player data. Only missing-column errors become migration guidance;
+        authentication, connectivity and other database failures retain their
+        original exception type. Never expose transport exception messages.
+        """
+        try:
+            self.client.table('roster_roi').select(','.join(METHODOLOGY_COLUMNS)).limit(0).execute()
+        except APIError as exc:
+            if exc.code in ('42703', 'PGRST204'):
+                raise SchemaNotReady() from None
+            raise
 
     def begin(self, run_id, kind, season, revision):
         self.active = (run_id, kind, season, revision)
@@ -149,7 +203,7 @@ class CloudStore:
 
     def ingest(self, run_id, season, metrics, coverage, manifest, historical=False):
         validate_metrics(metrics, season)
-        payloads = records(metrics)
+        payloads = metric_records(metrics)
         for start in range(0, len(payloads), 200):
             self.rpc('stage_pipeline_metrics', p_owner=self.owner, p_run=run_id,
                      p_rows=payloads[start:start+200], p_reset=start==0)

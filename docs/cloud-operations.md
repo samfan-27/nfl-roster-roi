@@ -90,6 +90,33 @@ Daily refresh keeps `23 16 * * *` UTC. Weekly attempts use Thursday 16:37 and
 bounded later retry. Same-data repeats are idempotent. Database health retains
 its independent six-hour Actions workflow and real SELECT query.
 
+### Methodology v2 rollout on an active pipeline
+
+Apply `infra/supabase/migrations/20261002_apy_methodology.sql` after the cloud
+migrations and before a refresh or weekly analysis with v2 code. Back up the
+retained dashboard rows and metadata first; inspect the current schema rather
+than assuming a passing CI migration test applied anything to production.
+The migration is additive and supports repeated application. It preserves the
+existing fenced transaction and retained rows while allowing unknown APY and
+adding explicit annual cap/cash and provenance fields.
+
+The cloud runner checks the new schema before downloading or archiving source
+data. Missing columns fail as `SchemaNotReady` with the exact migration path;
+other database failures retain their own exception type. The availability-only
+health check does not certify methodology readiness. If a rollout reaches an
+enabled schedule before migration, apply the migration and retry the failed
+run once, then verify the ingestion/publication head and saved financial fields.
+Do not disable validation or turn missing contract costs into zeros to pass an
+old NOT NULL constraint.
+
+Before staging metrics, the runner serializes nullable signing years and counts
+as integer JSON tokens. Pandas can represent a missing integer column as floats;
+PostgreSQL rejects `2026.0` when populating an integer field from JSON. Missing
+values stay null, fractional financial/rate values retain their precision, and
+fractional/nonfinite/overflowing integer counts fail before the first staged write.
+Failed database CLI results include only a recognized SQLSTATE/PostgREST code;
+exception messages, request URLs and headers remain excluded.
+
 ## Locks, retries and diagnostics
 
 All new writers/manual runs use the same Postgres lease. Each attempt receives
