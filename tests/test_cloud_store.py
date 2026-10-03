@@ -4,7 +4,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 import pandas as pd
 import pytest
-from etl.cloud_store import CloudStore,PipelineBusy,SchemaNotReady,METHODOLOGY_COLUMNS,read_pages
+from etl.cloud_store import (CloudStore,PipelineBusy,SchemaNotReady,METHODOLOGY_COLUMNS,
+                             INTEGER_METRIC_COLUMNS,metric_records,read_pages)
 from postgrest.exceptions import APIError
 from etl import cloud
 
@@ -154,3 +155,45 @@ def test_missing_migration_cli_reports_required_action_without_transport_data(mo
     result=json.loads(capsys.readouterr().out)
     assert result['error_type']=='SchemaNotReady'
     assert '20261002_apy_methodology.sql' in result['action']
+
+
+def test_nullable_metric_integers_preserve_unknowns_financial_precision_and_source_frame():
+    frame=pd.DataFrame({name:[2.0,None] for name in INTEGER_METRIC_COLUMNS})
+    frame['contract_apy_m']=[1.008066,None]
+    frame['contract_years']=[3.5,None]
+    original=frame.copy(deep=True)
+    payloads=metric_records(frame)
+    for name in INTEGER_METRIC_COLUMNS:
+        assert type(payloads[0][name]) is int
+        assert payloads[1][name] is None
+    assert payloads[0]['contract_apy_m']==1.008066
+    assert payloads[0]['contract_years']==3.5
+    pd.testing.assert_frame_equal(frame,original)
+
+
+@pytest.mark.parametrize('invalid', [2.5,float('inf'),2**31,'not a year'])
+def test_invalid_integer_metrics_stop_before_any_staging(invalid):
+    client=MagicMock();store=CloudStore(client);store.owner='owner'
+    frame=pd.DataFrame([dict(season=2026,gsis_id='p',snaps=100,total_epa=1,
+        yearly_cap_hit=None,position='QB',notes='test',contract_year_signed=invalid)])
+    with pytest.raises(ValueError):store.ingest('run',2026,frame,{}, {})
+    client.rpc.assert_not_called()
+
+
+@pytest.mark.parametrize('code', ['22P02','PGRST204'])
+def test_database_cli_diagnostics_expose_only_safe_codes(monkeypatch,capsys,code):
+    monkeypatch.setattr(cloud,'get_supabase_client',MagicMock())
+    error=APIError(dict(code=code,message='secret request headers',details='private details',hint=None))
+    monkeypatch.setattr(cloud,'execute',MagicMock(side_effect=error))
+    assert cloud.main(['refresh','--season','2026'])==1
+    import json
+    result=json.loads(capsys.readouterr().out)
+    assert result==dict(status='failed',error_type='APIError',database_code=code)
+
+
+def test_unrecognized_database_code_does_not_leak_transport_data(monkeypatch,capsys):
+    monkeypatch.setattr(cloud,'get_supabase_client',MagicMock())
+    error=APIError(dict(code='https://secret.example',message='secret',details=None,hint=None))
+    monkeypatch.setattr(cloud,'execute',MagicMock(side_effect=error))
+    assert cloud.main(['refresh','--season','2026'])==1
+    assert 'secret' not in capsys.readouterr().out

@@ -8,10 +8,12 @@ from hashlib import sha256
 from importlib.metadata import version
 import json
 import os
+import re
 from pathlib import Path
 import uuid
 import pandas as pd
 from dotenv import load_dotenv
+from postgrest.exceptions import APIError
 from etl.cloud_store import CloudStore, PipelineBusy, SchemaNotReady, utcnow, validate_metrics
 from etl.coverage import assess_coverage, require_ready, through_week, CoverageNotReady
 from etl.database import get_supabase_client, check_connection
@@ -210,7 +212,11 @@ def main(argv=None):
         print(json.dumps(dict(status='failed', error_type='SchemaNotReady', action=str(exc))))
         return 1
     except Exception as exc:
-        print(json.dumps(dict(status='failed', error_type=type(exc).__name__)))
+        result = dict(status='failed', error_type=type(exc).__name__)
+        if isinstance(exc, APIError) and re.fullmatch(r'(?:[0-9A-Z]{5}|PGRST[0-9]{3})', str(exc.code)):
+            # SQLSTATE/PostgREST codes are bounded identifiers, not messages.
+            result['database_code'] = exc.code
+        print(json.dumps(result))
         return 1
 
 

@@ -109,6 +109,14 @@ run once, then verify the ingestion/publication head and saved financial fields.
 Do not disable validation or turn missing contract costs into zeros to pass an
 old NOT NULL constraint.
 
+Before staging metrics, the runner serializes nullable signing years and counts
+as integer JSON tokens. Pandas can represent a missing integer column as floats;
+PostgreSQL rejects `2026.0` when populating an integer field from JSON. Missing
+values stay null, fractional financial/rate values retain their precision, and
+fractional/nonfinite/overflowing integer counts fail before the first staged write.
+Failed database CLI results include only a recognized SQLSTATE/PostgREST code;
+exception messages, request URLs and headers remain excluded.
+
 ## Locks, retries and diagnostics
 
 All new writers/manual runs use the same Postgres lease. Each attempt receives

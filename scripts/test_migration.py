@@ -43,6 +43,8 @@ sql(Path('infra/supabase/migrations/20261001_cloud_pipeline.sql').read_text())
 sql(Path('infra/supabase/migrations/20261001_snapshot_regression.sql').read_text())
 sql(Path('infra/supabase/migrations/20261002_apy_methodology.sql').read_text())
 sql(Path('infra/supabase/migrations/20261002_apy_methodology.sql').read_text())
+sql("select (jsonb_populate_record(null::roster_roi,'{\"contract_year_signed\":2026.0}'::jsonb)).contract_year_signed",ok=False)
+assert sql("select (jsonb_populate_record(null::roster_roi,'{\"contract_year_signed\":2026}'::jsonb)).contract_year_signed")=='2026'
 assert sql("select yearly_cap_hit from roster_roi where gsis_id='legacy'")=='20.010000'
 assert sql("select contract_apy_m is null from roster_roi where gsis_id='legacy'")=='t'
 # Remove only the setup fixture in this disposable test database.
@@ -87,6 +89,7 @@ assert sql('select count(*) from history_heads')=='0'
 r4=run()
 unknown=json.dumps(dict(season=2026,gsis_id='p1',player_name='Test',yearly_cap_hit=None,
     contract_apy_m=None,season_cap_charge_m=3.722066,season_cash_m=3.674,
+    contract_year_signed=2026,annual_entry_count=1,attempts=153,sacks_suffered=13,
     contract_type='Drafted',contract_identity_status='master_otc_identity',
     pfr_identity_status='master_mapping',production_team_count=1,snaps=100,total_epa=5))
 sql(f"insert into roster_roi_stage values('{r4}',2026,'p1','{unknown}')")
@@ -95,6 +98,9 @@ assert sql('select yearly_cap_hit is null from roster_roi')=='t'
 assert sql('select season_cap_charge_m from roster_roi')=='3.722066'
 assert sql('select season_cash_m from roster_roi')=='3.674'
 assert sql('select contract_type from roster_roi')=='Drafted'
+assert sql('select contract_year_signed from roster_roi')=='2026'
+assert sql('select annual_entry_count from roster_roi')=='1'
+assert sql('select attempts from roster_roi')=='153'
 
 report='A validated weekly report. '*10
 w1=run('weekly')
