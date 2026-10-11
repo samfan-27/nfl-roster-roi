@@ -1,0 +1,16 @@
+event_status,price_row_status,event_records,archived_timing_fit_used,archived_timing_test_used,archived_timing_fit_or_test_used
+ambiguous_player_year,ambiguous_player_year,2293,0,0,0
+ambiguous_player_year,missing_pre_event_history,17269,0,0,0
+ambiguous_player_year,regulated_or_unclassified_market,2806,0,0,0
+ambiguous_player_year,unreconciled_apy_convention,216,0,0,0
+invalid_price,invalid_price,1,0,0,0
+invalid_price,missing_pre_event_history,39,0,0,0
+invalid_price,unreconciled_apy_convention,1459,0,0,0
+missing_identity,missing_pre_event_history,2925,0,0,0
+missing_identity,unreconciled_apy_convention,330,0,0,0
+unconfigured_signing_cap,missing_pre_event_history,10692,0,0,0
+unconfigured_signing_cap,unreconciled_apy_convention,114,0,0,0
+usable_year_only,missing_pre_event_history,4795,0,0,0
+usable_year_only,regulated_or_unclassified_market,414,0,0,0
+usable_year_only,unreconciled_apy_convention,26,0,0,0
+usable_year_only,usable_year_only,3091,554,497,887

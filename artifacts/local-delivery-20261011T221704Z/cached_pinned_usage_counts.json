@@ -1,0 +1,9 @@
+{
+  "eligibility_rows": 6656,
+  "known_labels": 5042,
+  "unknown_labels": 1614,
+  "archived_fit_or_test_used": 5042,
+  "archived_primary_scored": 2511,
+  "row_ids_within_complete_extended_inventory": true,
+  "current_use": "cached_evidence_only"
+}

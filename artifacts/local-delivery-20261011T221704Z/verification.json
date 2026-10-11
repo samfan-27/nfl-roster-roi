@@ -1,0 +1,52 @@
+{
+  "passed": true,
+  "verified_at": "2026-10-11T22:21:05.100358+00:00",
+  "checks": {
+    "unchanged_input_files": 39,
+    "prior_manifest_entries": 261,
+    "raw_game_coverage": {
+      "completed": 58,
+      "shared": 49,
+      "completed_source_gaps": 9,
+      "not_completed_at_snapshot": 214
+    },
+    "full_roster_and_source_row_accounting": {
+      "roster": 3020,
+      "stats": 4024,
+      "snaps": 4579
+    },
+    "current_components_reconciled_to_raw_pbp": 1292,
+    "maximum_component_epa_error": 3.552713678800501e-15,
+    "team_inventory_coverage_and_component_aggregation": 32,
+    "historical_eligibility_and_original_values_preserved": 13490,
+    "pit_cost_bytes_and_unknown_value_inputs_preserved": {
+      "obligations": 336,
+      "unknown": 270,
+      "incomplete_comparisons": 6
+    },
+    "pinned_inventory_subset_and_immutable_copies": {
+      "eligibility_rows": 6656,
+      "known_labels": 5042,
+      "unknown_labels": 1614,
+      "archived_fit_or_test_used": 5042,
+      "archived_primary_scored": 2511,
+      "row_ids_within_complete_extended_inventory": true,
+      "current_use": "cached_evidence_only"
+    },
+    "price_inventory_and_cached_prediction_accounting": {
+      "price_eligibility_records": 46470,
+      "price_timing_fit_events": 554,
+      "price_timing_prediction_events": 497,
+      "price_eligibility_used_records": 887,
+      "price_eligibility_unused_records": 45583,
+      "price_timing_unscored_records": 45973
+    },
+    "price_timing_folds_match_usage_flags": true,
+    "preexisting_workspace_files_unchanged": 135,
+    "git_head_unchanged": true,
+    "incoming_documents_preserved_in_full": true,
+    "final_report_matches_workspace_document": true
+  },
+  "scope": "Finite byte checks and new delivery checks; current PBP only; no historical re-audit or model fit",
+  "packaging_verified_at": "2026-10-11T22:29:49.029380+00:00"
+}

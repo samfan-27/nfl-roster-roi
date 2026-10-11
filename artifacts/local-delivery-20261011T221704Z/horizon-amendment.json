@@ -1,0 +1,8 @@
+{
+  "amended_at": "2026-10-04T01:52:12.059465+00:00",
+  "reason": "Make current decision and one-season horizon explicit before computing scenarios",
+  "decision_time": "2026-10-03T22:00:00-04:00",
+  "horizon": "remaining 2026 regular season from decision time",
+  "scope": "immediate retain versus release and redeploy existing teammate; annual 2027 protocol unchanged",
+  "limitation": "No compatible remaining-season forecast; future cap/cash commitments through 2029 must still be audited; no scenario surplus computed"
+}

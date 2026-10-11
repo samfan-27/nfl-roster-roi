@@ -1,0 +1,6 @@
+# Optional offline v3 research environment; production requirements are unchanged.
+-r requirements.txt
+# Shallow signed-EPA challenger; already installed and import-checked locally.
+xgboost==3.2.0
+# Exact archived Parquet reader/writer version used by the study.
+pyarrow==23.0.1

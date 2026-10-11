@@ -1,0 +1,20 @@
+{
+  "started_at": "2026-10-11T22:17:04.689878+00:00",
+  "new_york": "2026-10-11T18:17:04.689878-04:00",
+  "python": "3.12.4 (v3.12.4:8e8a4baf65, Jun  6 2024, 17:33:18) [Clang 13.0.0 (clang-1300.0.29.30)]",
+  "executable": "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/.venv/bin/python",
+  "dependencies": {
+    "numpy": "2.4.2",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.8.0",
+    "scipy": "1.17.1",
+    "pyarrow": "23.0.1",
+    "xgboost": "3.2.0",
+    "nflreadpy": "0.1.5"
+  },
+  "git_head": "24b3ff83c71afc27dcf4551dab9a4dcc6f0e10a3",
+  "output": "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/local-delivery-20261011T221704Z",
+  "new_retrieval": false,
+  "model_fits": 0,
+  "forecast_validated": false
+}

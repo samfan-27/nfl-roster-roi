@@ -1,0 +1,9 @@
+Passed at 2026-10-11T22:29:49.029380+00:00
+All 39 input file hashes unchanged.
+All 135 pre-existing Git-visible file hashes unchanged.
+Git HEAD unchanged.
+Full incoming handoff/status bytes preserved.
+Final report equals workspace document.
+Pinned ledger/folds and price eligibility/folds/predictions are verified byte copies.
+Pinned/price fold use counts verified by set unions; eligibility reasons preserved.
+No model fit, public fetch, full-history audit or new pytest run.

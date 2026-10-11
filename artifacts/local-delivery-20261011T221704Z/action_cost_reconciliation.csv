@@ -1,0 +1,7 @@
+scenario,basis,retain_m,replace_m,known_retain_subtotal_m,known_replace_subtotal_m,incremental_k_m,status,convention
+retain_metcalf_vs_internal_11692,cap,,,141.09487199999998,51.094872,,incomplete_obligations,retain_minus_replace
+retain_metcalf_vs_internal_11692,cash,,,90.0,0.0,,incomplete_obligations,retain_minus_replace
+retain_metcalf_vs_internal_9713,cap,,,140.48999999999998,50.49,,incomplete_obligations,retain_minus_replace
+retain_metcalf_vs_internal_9713,cash,,,90.0,0.0,,incomplete_obligations,retain_minus_replace
+retain_metcalf_vs_internal_8774,cap,,,196.702,106.702,,incomplete_obligations,retain_minus_replace
+retain_metcalf_vs_internal_8774,cash,,,90.0,0.0,,incomplete_obligations,retain_minus_replace

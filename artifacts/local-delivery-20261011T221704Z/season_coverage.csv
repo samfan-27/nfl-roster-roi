@@ -1,0 +1,12 @@
+season,schedule_games,completed_games,shared_games,annual_complete,epa_reconciled,max_epa_error,unresolved_snap_rows,identity_pairs,conflicting_roster_pairs,ambiguous_prior_roles,roster_rows,teams,team_target_max_error,source_to_freeze_ready,unresolved_core_spine,source_receipts,provider_exhaustiveness
+2016,256,256,256,True,True,3.552713678800501e-15,7,22668,2,0,3061,32,0.0,False,80,source_ledger.json,not_proven_by_matching_game_ids
+2017,256,256,256,True,True,3.552713678800501e-15,0,22668,2,0,3082,32,0.0,False,80,source_ledger.json,not_proven_by_matching_game_ids
+2018,256,256,256,True,True,7.105427357601002e-15,0,22668,1,0,3142,32,0.0,False,92,source_ledger.json,not_proven_by_matching_game_ids
+2019,256,256,256,True,True,7.105427357601002e-15,30,22668,0,0,3114,32,0.0,False,54,source_ledger.json,not_proven_by_matching_game_ids
+2020,256,256,256,True,True,3.552713678800501e-15,21,22668,0,0,3068,32,0.0,False,25,source_ledger.json,not_proven_by_matching_game_ids
+2021,272,272,272,True,True,7.105427357601002e-15,34,22668,0,0,2961,32,0.0,False,21,source_ledger.json,not_proven_by_matching_game_ids
+2022,271,271,271,True,True,3.552713678800501e-15,8,22668,0,0,3134,32,0.0,False,64,source_ledger.json,not_proven_by_matching_game_ids
+2023,272,272,272,True,True,3.552713678800501e-15,13,22668,1,0,3090,32,0.0,False,59,source_ledger.json,not_proven_by_matching_game_ids
+2024,272,272,272,True,True,3.552713678800501e-15,39,22669,1,0,3216,32,0.0,False,78,source_ledger.json,not_proven_by_matching_game_ids
+2025,272,272,272,True,True,3.552713678800501e-15,52,22668,0,0,3137,32,0.0,False,62,source_ledger.json,not_proven_by_matching_game_ids
+2026,272,58,49,False,True,1.7763568394002505e-15,8,22682,1,0,3020,32,0.0,False,73,source_ledger.json,not_proven_by_matching_game_ids

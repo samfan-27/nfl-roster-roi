@@ -1,0 +1,35 @@
+/Users/runner/work/crossbow/crossbow/arrow/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l1dcachesize'. Detail: [errno 1] Operation not permitted
+/Users/runner/work/crossbow/crossbow/arrow/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l2cachesize'. Detail: [errno 1] Operation not permitted
+/Users/runner/work/crossbow/crossbow/arrow/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l3cachesize'. Detail: [errno 1] Operation not permitted
+/Users/runner/work/crossbow/crossbow/arrow/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.optional.neon'. Detail: [errno 1] Operation not permitted
+/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/scripts/verify_local_delivery.py:56: FutureWarning: Mismatched null-like values nan and None found. In a future version, pandas equality-testing functions (e.g. assert_frame_equal) will consider these not-matching and raise.
+  pd.testing.assert_series_equal(roster[column], raw_roster[column], check_names=False)
+{
+  "passed": true,
+  "verified_at": "2026-10-11T22:21:05.100358+00:00",
+  "checks": {
+    "unchanged_input_files": 33,
+    "prior_manifest_entries": 261,
+    "raw_game_coverage": {
+      "completed": 58,
+      "shared": 49,
+      "completed_source_gaps": 9,
+      "not_completed_at_snapshot": 214
+    },
+    "full_roster_and_source_row_accounting": {
+      "roster": 3020,
+      "stats": 4024,
+      "snaps": 4579
+    },
+    "current_components_reconciled_to_raw_pbp": 1292,
+    "maximum_component_epa_error": 3.552713678800501e-15,
+    "team_inventory_coverage_and_component_aggregation": 32,
+    "historical_eligibility_and_original_values_preserved": 13490,
+    "pit_cost_bytes_and_unknown_value_inputs_preserved": {
+      "obligations": 336,
+      "unknown": 270,
+      "incomplete_comparisons": 6
+    }
+  },
+  "scope": "Finite byte checks and new delivery checks; current PBP only; no historical re-audit or model fit"
+}

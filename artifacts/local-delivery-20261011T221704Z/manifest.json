@@ -1,0 +1,305 @@
+{
+  "schema_version": 1,
+  "status": "current_local_delivery_complete",
+  "completed_at": "2026-10-11T22:29:49.029380+00:00",
+  "new_york": "2026-10-11T18:29:49.029380-04:00",
+  "root": "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/local-delivery-20261011T221704Z",
+  "git_head": "24b3ff83c71afc27dcf4551dab9a4dcc6f0e10a3",
+  "forecast_validated": false,
+  "model_fits": 0,
+  "annual_forecasts_generated": 0,
+  "new_retrieval": false,
+  "economic_surplus": "unknown",
+  "historical_measurement_years": [
+    2016,
+    2025
+  ],
+  "current_partial_season": 2026,
+  "source_snapshot_latest": "2026-10-04T22:56:10.651139+00:00",
+  "roster_snapshot_at": "2026-10-04T15:39:12.214567+00:00",
+  "scope_amendment": "docs/local-delivery-scope-amendment-2026-10-11.md",
+  "original_preparation_failure": "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-source-resolution-v1/preparation-rejected-01/failure.json",
+  "inputs": {
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-source-resolution-v1/final-01/manifest.json": "0797f7e4226efb4d444561f77e1cc4feb2540099e533c383442c3cb097ca5284",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-sample-impact-v1/final-01/manifest.json": "f0a321662b352f0d65f304e91f389949afabdeb38c791d95bc75e30e44378714",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-v3/extended/baseline_manifest.json": "576cef99bc90c80cd456ee9d8d1e68e6dcb1518188af65db502bf324e173ddde",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-v3/checkpoint/manifest.json": "5d1b904eb26a18d54faa22da5f143ff9b1e0bf8ebe8bb084fdee48309fbbb37c",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-v3/challenger-checkpoint/manifest.json": "5e71b9ed2164b82cea9591284e68a0222a654f5d2f49289dbdec7eaacc320fb5",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-information-v1/final-stage-01/manifest.json": "bd2f30e8b73746390e82adf96b1aa883ce4422a923091722ef6e527097e4d7e6",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-source-resolution-v1/current-sources-02/manifest.json": "15127d95bb92c918893a50ca1addeb9ee7be2d1c127096633469f8d7c05debec",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-source-resolution-v1/current-sources-02/players.parquet": "485b198070f831ed3a9098b991cd4b5dd97407e23a08fe31629d18dc304885e2",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-source-resolution-v1/current-sources-02/2026_rosters.parquet": "b65d097c9d75a942752e8f6e2f07b7b0231c6410240724af1d305d40aacf12a7",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-source-resolution-v1/current-sources-03/manifest.json": "1e5beb6e3e097e4ebd050b36c0fb0aeba81e1c84827c733e635d151c6a123c0c",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-source-resolution-v1/current-sources-03/schedule.parquet": "81be6a78941df9d9468cf105316107a9f599f5329885da5946463cf818194ba7",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-source-resolution-v1/current-sources-03/2026_player_stats.parquet": "20384d3bf664d523c553c14156b8ac7becb5103d48e65dc407e3f75b3da57f8f",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-source-resolution-v1/current-sources-03/2026_snap_counts.parquet": "fae0627d81f4ffa1802263ac0fad1a29f5c1986d5749a711bde7c50651498273",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-source-resolution-v1/current-sources-03/2026_pbp.parquet": "1f0c101bcdc0a3f6f30e5c18e368373f51be948206d9884853a14d2a0ecd1f1c",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-source-resolution-v1/evidence-01/audit-2026/game_checks.csv": "c34a8ecb6dc4e9f2773d2f4f6708181113903e547a697b65f7da3cf6f3b808f0",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-source-resolution-v1/evidence-01/audit-2026/identity_map.csv": "3160aeefec542ed86d0c7c3e9b0b60acc79e44596970960a3b6ad51daab3d136",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-source-resolution-v1/evidence-01/audit-2026/spine.csv": "280b44102e82a4526709379a8667f71653eae7a65ab91d392886a4a025d19b61",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-source-resolution-v1/evidence-01/audit-2026/components.csv": "f6aac831ca2c468a69e9fb5c338f19edcf4e41f3499a99974107426e4654bd17",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-v3/extended/sample_ledger.csv": "38e46e7d2037c303df07dbbed9699238e3711cf4c03221e974b80e85b591cf12",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-v3/extended/folds.json": "5214a879b57217a68f7a942328390c34ff7387340522c00bf2225f0fe8a7ba12",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-sample-impact-v1/audit-02/archived_observed_labels_with_unresolved_conflicts.csv": "2049f281e7279e0980b8092e42fed18de885e6f586a5c50b0760ebd3dd57874a",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-sample-impact-v1/audit-02/saved_membership_links.csv": "c6aaa23986b913c06b5587e4efa1e1343203743ebf0722a902616b9954e17eb5",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-sample-impact-v1/audit-02/identity_sample_impact.csv": "f6deca21c2fcafd6c7445f1a1f7f39790b8d3eeb760f87e715ca12d4e4b7072e",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-sample-impact-v1/audit-02/identity_inventory.csv": "9b9dad15c6ec65cd8df4fe0819de7579ba77a9554395f6c8cc38d762af092ae3",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-source-resolution-v1/evidence-01/season_coverage.csv": "f3c86613cb8a01c05e1fadc481c128ff5f92994c7d31b4294a1d6109d104a96b",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-source-resolution-v1/cost-update-01/action_obligations.csv": "264db483d1444f701b00aa4fcf594f54747f571737863cae496a8abd66cdf0c0",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-source-resolution-v1/cost-update-01/action_cost_reconciliation.csv": "011c1dfc1dcf0b9a21a96c0a8525b2282c32742cb7ac946073bb662f87b3e0c9",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-decision-evidence-v1/case-selection-01/horizon-amendment.json": "81472cb9a1a9226c28f883956985da52860f549e453dad982c9f4053aa4b5f98",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-v3/challenger-checkpoint/comparisons.csv": "ce76481966b6ad9cbeee7bb28c68e654c427f2f7e257334d6cabcd356f9eee19",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-v3/challenger-checkpoint/primary_metrics.csv": "a807b731c5b247664eb08c0c4470a2143ac5d4f038a7515488215f013ba62b6b",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-information-v1/experiment-01/comparisons.csv": "f673af3b0ab7d541d56e899239e743d2b3df2a759c361f515ebe65d885bc4feb",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-v3/checkpoint/price_reference_metrics.csv": "b28b764270d68059d130b7f8e61b9ebaf133b2f595bc9a3f218b303dc8d6277b",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-decision-evidence-v1/dossier-02/alternatives.csv": "410f5a1fa70bc39e89a1d1f97ed3553c2ccb4a35607671f8e601b733b243537a",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-v3/pinned/sample_ledger.csv": "7ae05058f58abdd4caabf768e41a75f7c6793cbfa68ca943ce3a1930c6436275",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-v3/pinned/folds.json": "ef782364675d1cc9daa8df9678ec05cba1f9f13ef172c3355d16028efb63cbbf",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-v3/pinned/price_exclusion_ledger.csv": "75c81542124bf20eb80cbd82b4a6e5b48a9e1a9cd362f9042d57acfb2c5ce68c",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-v3/pinned/price_folds.json": "c9d04ba7ef76933b07f763b76a78f290fc5e81a3e0b6f96687f087ff6e62d644",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-v3/pinned/price_timing_predictions.csv": "2f6bf07a1cf6629e744882e7cad099e73e5df29c82ced705cbb2f24105465c15",
+    "/Users/fanzirui/Desktop/samfan-27/nfl-roster-roi/artifacts/model-research-v3/pinned/baseline_manifest.json": "7cd6f5cdc7e9819879828315fc22592f527d44b4bce004cabc10992fb3fc9c9f"
+  },
+  "workspace_files": {
+    "HANDOFF.md": "3e970b46ef0e47b16868d8f85e4dc6191d4793eda3497651de683947de880be3",
+    "PROJECT_STATUS.md": "3df46c211022723562bf940d4b95e1928dd3aee9bf7785d08af89d1f72b9121f",
+    "docs/local-delivery-final-report-2026-10-11.md": "c91fb54e8ed312d7ba5601026a95a3d09485b335375d1719d23ada21baabd3dc",
+    "docs/local-delivery-scope-amendment-2026-10-11.md": "d3e98ecf412485ea0324c799fd26957c3fbc61c14bd314d26db54a2c5af59770",
+    "scripts/complete_local_delivery.py": "aaad4f5b4466cde7380c25b88324becf855a2438a022fa644483515d0f4b98cd",
+    "scripts/verify_local_delivery.py": "1a4b0e89d0f601507651058828f594fb1acd271639f8800813318466093e6ca8",
+    "requirements.txt": "0414cdac68486863c8e6ce84c89da1f831ee771ccf2a80d6dc866016f4fbc705",
+    "requirements-research.txt": "4ad2bc041dc7694a42f17089fc2f8eaa473333b2b3dd052b8deb3720cb7e0914"
+  },
+  "outputs": {
+    "FINAL_REPORT.md": {
+      "sha256": "c91fb54e8ed312d7ba5601026a95a3d09485b335375d1719d23ada21baabd3dc",
+      "bytes": 9439
+    },
+    "README.md": {
+      "sha256": "40c1307f06488a318d6834568f97f204026de46802948559bad48b4d8c9ea995",
+      "bytes": 2213
+    },
+    "TEAM_OVERVIEW.md": {
+      "sha256": "954bfecc0f793bf4515d54980d0d6cd7958dde280898bc68852ea78bb00830e7",
+      "bytes": 2231
+    },
+    "action_cost_reconciliation.csv": {
+      "sha256": "011c1dfc1dcf0b9a21a96c0a8525b2282c32742cb7ac946073bb662f87b3e0c9",
+      "bytes": 717
+    },
+    "action_obligations.csv": {
+      "sha256": "264db483d1444f701b00aa4fcf594f54747f571737863cae496a8abd66cdf0c0",
+      "bytes": 374243
+    },
+    "archived_observed_labels_with_unresolved_conflicts.csv": {
+      "sha256": "2049f281e7279e0980b8092e42fed18de885e6f586a5c50b0760ebd3dd57874a",
+      "bytes": 4520
+    },
+    "build.log": {
+      "sha256": "781a0b39cd7914f898516c9501d665b6b9e216db99999c15d5b4395f8637b6b3",
+      "bytes": 1804
+    },
+    "cached_contribution_metrics.csv": {
+      "sha256": "1b7ff2fd678f9f97a88fd1c10c47573e654615ccd7a4952da3700a5b2a1f7641",
+      "bytes": 166247
+    },
+    "cached_extended_contribution_comparisons.csv": {
+      "sha256": "94ad5ce94b7170c381f510d82fee07a1d299e44c68dd88c661565e5ed542343a",
+      "bytes": 53300
+    },
+    "cached_information_comparisons.csv": {
+      "sha256": "5665a3851814ac694cd6dc4a4f21151cf18f8d4b9fbed024fbbdcda7afdb9e94",
+      "bytes": 6233
+    },
+    "cached_pinned_folds.json": {
+      "sha256": "ef782364675d1cc9daa8df9678ec05cba1f9f13ef172c3355d16028efb63cbbf",
+      "bytes": 684235
+    },
+    "cached_pinned_price_exclusion_ledger.csv": {
+      "sha256": "75c81542124bf20eb80cbd82b4a6e5b48a9e1a9cd362f9042d57acfb2c5ce68c",
+      "bytes": 5075040
+    },
+    "cached_pinned_price_folds.json": {
+      "sha256": "c9d04ba7ef76933b07f763b76a78f290fc5e81a3e0b6f96687f087ff6e62d644",
+      "bytes": 84356
+    },
+    "cached_pinned_price_timing_predictions.csv": {
+      "sha256": "2f6bf07a1cf6629e744882e7cad099e73e5df29c82ced705cbb2f24105465c15",
+      "bytes": 202307
+    },
+    "cached_pinned_sample_ledger.csv": {
+      "sha256": "7ae05058f58abdd4caabf768e41a75f7c6793cbfa68ca943ce3a1930c6436275",
+      "bytes": 2549037
+    },
+    "cached_pinned_usage_counts.json": {
+      "sha256": "9923d6c835f2c1f5a68d0ac751d11e678a7d31edf5d4fc000c736f32bc7dafe4",
+      "bytes": 248
+    },
+    "cached_price_eligibility_counts.csv": {
+      "sha256": "92fe33dcebbc929665b6fcc0d1f297b52152b33dd3afbb77080eec2f69906f94",
+      "bytes": 961
+    },
+    "cached_price_eligibility_usage.csv": {
+      "sha256": "d540a29efad7087dc88c704e9f67f0009a2954986df0fed12f5d9825be21cb6f",
+      "bytes": 7989711
+    },
+    "cached_price_metrics.csv": {
+      "sha256": "1f3debdf61a0c064f1e59522a08bd4095cba1e252c6016cbd26191e8faec0b12",
+      "bytes": 8145
+    },
+    "cached_price_reference_contrasts.csv": {
+      "sha256": "348e1605695e4904354f5da76b5adde59a5a0d00a591e93978670e12112001d9",
+      "bytes": 979
+    },
+    "clock_checks.json": {
+      "sha256": "44d6769701f57c74bc5d11f44381fbc5a7c862baba515b6ee01c7c751e415329",
+      "bytes": 179
+    },
+    "current_component_usage.csv": {
+      "sha256": "5c69694af134aea7e8045fddd67bb6098b884f19a86db6f7411ba9b32b378e15",
+      "bytes": 408152
+    },
+    "current_game_coverage.csv": {
+      "sha256": "c536dd8fdd13b623057717724504917607868dd2f239b4c008757ef6d09419d7",
+      "bytes": 76845
+    },
+    "current_roster_eligibility_usage.csv": {
+      "sha256": "d4b76258a280e7105926fca104d554e883febb5ab2e5eaa725a7134d7db69936",
+      "bytes": 1092324
+    },
+    "current_source_receipts.csv": {
+      "sha256": "59b11746c01240103bb510f3c9882e10fb1ea14b28996a60c062cda171c0fc61",
+      "bytes": 2201
+    },
+    "current_source_row_usage.csv": {
+      "sha256": "f41cab340ca80ccc78778fc123d20d26ad0fe3c0a99ec001e8acde4822e02418",
+      "bytes": 2422285
+    },
+    "environment-lock.txt": {
+      "sha256": "e63c343caabfec1059d4da88ada6653ad361ef9deb9e5c4a8a301e8926d4749a",
+      "bytes": 2186
+    },
+    "environment.json": {
+      "sha256": "fbc598363939a961d52f95329a3d6ef89d8c708a7c92a32ef8a30ef078c31e1a",
+      "bytes": 728
+    },
+    "git_status_after.txt": {
+      "sha256": "4f9ea58ff5e28997e005de223484997dbc8cf5a2e426f95370e773c3c39fcd40",
+      "bytes": 2316
+    },
+    "git_status_before.txt": {
+      "sha256": "8eea59e1f37aa28a612f5f1fed8adc727a4f35218d37a923b6577eaad08d1e50",
+      "bytes": 2139
+    },
+    "historical_eligibility_usage.csv": {
+      "sha256": "b44ef084617320485421217df27f0adea5f7f98b2993b079a9ca94ac08d0ae78",
+      "bytes": 6379080
+    },
+    "historical_usage_counts.csv": {
+      "sha256": "c03c40ef8ec4d0518becd33cd1eaf37e62d329dc79c91fc26c8dca6a16cf59c1",
+      "bytes": 4837
+    },
+    "horizon-amendment.json": {
+      "sha256": "81472cb9a1a9226c28f883956985da52860f549e453dad982c9f4053aa4b5f98",
+      "bytes": 525
+    },
+    "identity_inventory.csv": {
+      "sha256": "9b9dad15c6ec65cd8df4fe0819de7579ba77a9554395f6c8cc38d762af092ae3",
+      "bytes": 280074
+    },
+    "identity_sample_impact.csv": {
+      "sha256": "f6deca21c2fcafd6c7445f1a1f7f39790b8d3eeb760f87e715ca12d4e4b7072e",
+      "bytes": 1150452
+    },
+    "input_hashes.json": {
+      "sha256": "63e47bae60c9c062d58202e6c13c7dc7c93bb7c42dde8b4225c3b7acc1e08a8f",
+      "bytes": 7607
+    },
+    "packaging_checks.log": {
+      "sha256": "5104cc5c77295a5e91f370393c17e123d67759429b7f512e6325226d03edb430",
+      "bytes": 477
+    },
+    "pit_case_observations.csv": {
+      "sha256": "048e1cef1425c2c9815d871b3d70b8f101a9123f661b325ec4b4a6c00577cb39",
+      "bytes": 2757
+    },
+    "previous_documents/HANDOFF.md": {
+      "sha256": "41d7973bdbc8d363697815ad4f74ac5e5bda72c40ff8339a230246fca5e4303e",
+      "bytes": 34090
+    },
+    "previous_documents/PROJECT_STATUS.md": {
+      "sha256": "6de0ae8f7ad8f00213b61d64c4a5656c86598bd96e3144d73edc68ae9e2fc133",
+      "bytes": 19468
+    },
+    "prior_manifest_verification.csv": {
+      "sha256": "d98c7e572698b3bb730cd12e34226ef5576ef39f0ba1a52357e1793069207b3e",
+      "bytes": 83168
+    },
+    "scope_amendment.md": {
+      "sha256": "d3e98ecf412485ea0324c799fd26957c3fbc61c14bd314d26db54a2c5af59770",
+      "bytes": 2293
+    },
+    "season_coverage.csv": {
+      "sha256": "f3c86613cb8a01c05e1fadc481c128ff5f92994c7d31b4294a1d6109d104a96b",
+      "bytes": 1773
+    },
+    "summary.json": {
+      "sha256": "6e201a5f3cb6c3818a9173d130a3db020d399b8936fdc2b47689de5821a33136",
+      "bytes": 1922
+    },
+    "team_overview_32.csv": {
+      "sha256": "75492ea0ce458c002cb9f569bfe651bbf2cc343ab32b4c234d4f50d1ba186e54",
+      "bytes": 5461
+    },
+    "team_position_component_observations.csv": {
+      "sha256": "994ee1c2ae643dd7b57d733d0343d1c704ed1a0683a09d95c59d408cb265a193",
+      "bytes": 7650
+    },
+    "verification.json": {
+      "sha256": "1a1e2ba21c93c91514f53900273646df534c17e13e6d57bf18c591dc798ad02d",
+      "bytes": 1887
+    },
+    "verification.log": {
+      "sha256": "62d4985a5526cbb9acb0b0dccfe014739093a2ce7e9f51a46a49a942a860d44e",
+      "bytes": 1980
+    },
+    "workspace_hashes_before.json": {
+      "sha256": "4f45b7d77664c6b1109576820292ad17258ce9d9110f72cc284a939d0481df16",
+      "bytes": 13965
+    },
+    "workspace_snapshot/HANDOFF.md": {
+      "sha256": "3e970b46ef0e47b16868d8f85e4dc6191d4793eda3497651de683947de880be3",
+      "bytes": 38113
+    },
+    "workspace_snapshot/PROJECT_STATUS.md": {
+      "sha256": "3df46c211022723562bf940d4b95e1928dd3aee9bf7785d08af89d1f72b9121f",
+      "bytes": 22805
+    },
+    "workspace_snapshot/docs/local-delivery-final-report-2026-10-11.md": {
+      "sha256": "c91fb54e8ed312d7ba5601026a95a3d09485b335375d1719d23ada21baabd3dc",
+      "bytes": 9439
+    },
+    "workspace_snapshot/docs/local-delivery-scope-amendment-2026-10-11.md": {
+      "sha256": "d3e98ecf412485ea0324c799fd26957c3fbc61c14bd314d26db54a2c5af59770",
+      "bytes": 2293
+    },
+    "workspace_snapshot/requirements-research.txt": {
+      "sha256": "4ad2bc041dc7694a42f17089fc2f8eaa473333b2b3dd052b8deb3720cb7e0914",
+      "bytes": 279
+    },
+    "workspace_snapshot/requirements.txt": {
+      "sha256": "0414cdac68486863c8e6ce84c89da1f831ee771ccf2a80d6dc866016f4fbc705",
+      "bytes": 172
+    },
+    "workspace_snapshot/scripts/complete_local_delivery.py": {
+      "sha256": "aaad4f5b4466cde7380c25b88324becf855a2438a022fa644483515d0f4b98cd",
+      "bytes": 19203
+    },
+    "workspace_snapshot/scripts/verify_local_delivery.py": {
+      "sha256": "1a4b0e89d0f601507651058828f594fb1acd271639f8800813318466093e6ca8",
+      "bytes": 8726
+    }
+  },
+  "verification": "verification.json",
+  "boundary": "Current delivery complete; unknown future accuracy and action value are limitations; no follow-up scheduled"
+}

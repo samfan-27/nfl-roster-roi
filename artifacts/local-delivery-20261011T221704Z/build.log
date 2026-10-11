@@ -1,0 +1,37 @@
+/Users/runner/work/crossbow/crossbow/arrow/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l1dcachesize'. Detail: [errno 1] Operation not permitted
+/Users/runner/work/crossbow/crossbow/arrow/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l2cachesize'. Detail: [errno 1] Operation not permitted
+/Users/runner/work/crossbow/crossbow/arrow/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l3cachesize'. Detail: [errno 1] Operation not permitted
+/Users/runner/work/crossbow/crossbow/arrow/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.optional.neon'. Detail: [errno 1] Operation not permitted
+{
+  "status": "current_local_delivery_complete",
+  "source_snapshot_latest": "2026-10-04T22:56:10.651139+00:00",
+  "roster_snapshot_at": "2026-10-04T15:39:12.214567+00:00",
+  "regular_games": 272,
+  "completed_games": 58,
+  "shared_games": 49,
+  "completed_source_gaps": 9,
+  "not_completed_at_snapshot": 214,
+  "roster_rows": 3020,
+  "core_rows": 944,
+  "core_eligible": 870,
+  "core_observation_used": 491,
+  "core_unused": 453,
+  "current_usage_reasons": {
+    "outside_core_scope": 2076,
+    "recorded_observation": 491,
+    "no_record_in_shared_games_unknown_outside_coverage": 379,
+    "identity_abstention": 74
+  },
+  "historical_rows": 13490,
+  "historical_fit_or_test_used": 11448,
+  "historical_primary_scored": 8925,
+  "historical_unknown_labels": 2042,
+  "historical_label_conflict_rows": 3,
+  "model_fits": 0,
+  "new_retrieval": false,
+  "annual_forecasts_generated": 0,
+  "forecast_validated": false,
+  "economic_surplus": "unknown",
+  "new_prospective_validation": false,
+  "interpretation": "Current observations and cached historical experiments; no annualization or deployment counterfactual"
+}
